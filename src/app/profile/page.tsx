@@ -6,26 +6,24 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { useState, useEffect } from 'react';
-import { UserCircle, Mail, Edit3 } from 'lucide-react';
+import { UserCircle, Mail, Edit3, LogOutIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
 export default function ProfilePage() {
-  const { user, updateUser, isAuthenticated, isLoading } = useAuth();
+  const { user, updateUser, isAuthenticated, isLoading, logout } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
-  // For avatar upload, a more complex solution is needed (e.g., uploading to a server)
-  // For this example, we'll just allow changing the placeholder URL or a base64 string if desired.
   const [avatarUrl, setAvatarUrl] = useState(user?.image || ''); 
   const { toast } = useToast();
   const router = useRouter();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.push('/'); // Redirect to home if not authenticated
+      router.push('/'); 
       toast({ title: "Access Denied", description: "Please log in to view your profile.", variant: "destructive"});
     }
     if (user) {
@@ -40,7 +38,7 @@ export default function ProfilePage() {
         toast({ title: "Error", description: "Name cannot be empty.", variant: "destructive"});
         return;
     }
-    updateUser({ name, email, image: avatarUrl }); // Email update might need verification in a real app
+    updateUser({ name, email, image: avatarUrl }); 
     setIsEditing(false);
     toast({ title: "Profile Updated", description: "Your profile has been successfully updated." });
   };
@@ -54,6 +52,12 @@ export default function ProfilePage() {
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleLogout = () => {
+    logout();
+    // Toast notification for logout is handled within AuthContext
+    // router.push('/'); // Redirecting to home, also handled by AuthContext or can be explicit here
   };
 
   if (isLoading) {
@@ -133,6 +137,11 @@ export default function ProfilePage() {
             </div>
           )}
         </CardContent>
+        <CardFooter>
+          <Button variant="destructive" onClick={handleLogout} className="w-full">
+            <LogOutIcon className="mr-2 h-4 w-4" /> Log Out
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   );
