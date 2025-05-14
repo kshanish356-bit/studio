@@ -10,9 +10,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Train, Search, Filter, Loader2 } from 'lucide-react';
-import { useRouter } from 'next/navigation'; // Added useRouter
-import { useToast } from '@/hooks/use-toast'; // Added useToast
+import { Train, Search, Filter, Loader2, ArrowLeft } from 'lucide-react'; // Added ArrowLeft
+import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
 
 interface TrainResult {
   id: string;
@@ -24,8 +24,8 @@ interface TrainResult {
 }
 
 export default function TrainsPage() {
-  const router = useRouter(); // Initialized useRouter
-  const { toast } = useToast(); // Initialized useToast
+  const router = useRouter();
+  const { toast } = useToast();
 
   // Search form state
   const [fromStation, setFromStation] = useState('');
@@ -71,7 +71,6 @@ export default function TrainsPage() {
 
   const handleBookTrain = (train: TrainResult) => {
     toast({ title: 'Train Selected', description: `Booking ${train.trainName}. Proceeding to payment.` });
-    // Here you might want to store selected train details in state or context before navigating
     router.push('/payment');
   };
 
@@ -99,7 +98,7 @@ export default function TrainsPage() {
     <div className="bg-background min-h-screen">
       <nav className="p-4 container mx-auto">
         <Link href="/" className="text-primary hover:text-primary/80 font-bold text-lg inline-flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1 h-5 w-5"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+          <ArrowLeft className="mr-1 h-5 w-5"/>
           Home
         </Link>
       </nav>
