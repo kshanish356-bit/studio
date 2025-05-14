@@ -10,7 +10,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Train, Search, Filter, Loader2 } from 'lucide-react'; // Added Loader2
+import { Train, Search, Filter, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation'; // Added useRouter
+import { useToast } from '@/hooks/use-toast'; // Added useToast
 
 interface TrainResult {
   id: string;
@@ -22,6 +24,9 @@ interface TrainResult {
 }
 
 export default function TrainsPage() {
+  const router = useRouter(); // Initialized useRouter
+  const { toast } = useToast(); // Initialized useToast
+
   // Search form state
   const [fromStation, setFromStation] = useState('');
   const [toStation, setToStation] = useState('');
@@ -38,7 +43,7 @@ export default function TrainsPage() {
 
   // Loading and results
   const [isLoading, setIsLoading] = useState(false);
-  const [trainResults, setTrainResults] = useState<TrainResult[]>([]); // Placeholder
+  const [trainResults, setTrainResults] = useState<TrainResult[]>([]);
 
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -47,18 +52,15 @@ export default function TrainsPage() {
 
   const handleSearchTrains = async () => {
     setIsLoading(true);
-    console.log("Searching trains with:", { fromStation, toStation, departureDate, classType, passengers, quota, selectedTrainTypes, selectedDepTimes, selectedArrTimes, selectedFares });
-    // Simulate API call
+    toast({ title: 'Searching Trains', description: `From: ${fromStation} To: ${toStation}` });
     await new Promise(resolve => setTimeout(resolve, 1500));
-    // Dummy results
     setTrainResults([
       { id: '1', trainName: 'Shatabdi Express', trainNumber: '12001', departureTime: '06:00 AM', arrivalTime: '12:00 PM', price: '₹ 1200' },
       { id: '2', trainName: 'Rajdhani Express', trainNumber: '12301', departureTime: '17:00 PM', arrivalTime: '05:00 AM', price: '₹ 2500' },
       { id: '3', trainName: 'Duronto Express', trainNumber: '12259', departureTime: '20:00 PM', arrivalTime: '07:00 AM', price: '₹ 1800' },
     ]);
     setIsLoading(false);
-    // In a real app, use toast for notifications
-    // toast({ title: 'Search Complete', description: 'Displaying available trains.' });
+    toast({ title: 'Search Complete', description: 'Displaying available trains.' });
   };
   
   const handleFilterChange = (setter: React.Dispatch<React.SetStateAction<string[]>>, value: string) => {
@@ -67,6 +69,11 @@ export default function TrainsPage() {
     );
   };
 
+  const handleBookTrain = (train: TrainResult) => {
+    toast({ title: 'Train Selected', description: `Booking ${train.trainName}. Proceeding to payment.` });
+    // Here you might want to store selected train details in state or context before navigating
+    router.push('/payment');
+  };
 
   const trainTypeOptions = [
     { id: "express", label: "Express" },
@@ -97,7 +104,6 @@ export default function TrainsPage() {
         </Link>
       </nav>
 
-      {/* Top Search Bar */}
       <section className="py-6 bg-secondary shadow-md">
         <div className="container mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 items-end p-4 bg-card rounded-lg shadow">
@@ -144,9 +150,7 @@ export default function TrainsPage() {
         </div>
       </section>
 
-      {/* Main Content */}
       <div className="container mx-auto flex flex-col md:flex-row gap-8 px-4 py-8">
-        {/* Sidebar Filters */}
         <aside className="w-full md:w-1/4 lg:w-1/5 p-6 bg-card rounded-lg shadow-lg self-start">
           <h2 className="text-2xl font-semibold mb-6 flex items-center"><Filter className="mr-2 h-6 w-6 text-primary" /> Filters</h2>
           
@@ -219,10 +223,9 @@ export default function TrainsPage() {
           </div>
         </aside>
 
-        {/* Train Results */}
         <section className="flex-grow w-full md:w-3/4 lg:w-4/5">
           <h2 className="text-2xl font-semibold mb-6 flex items-center"><Train className="mr-2 h-6 w-6 text-primary"/> Available Trains</h2>
-          {isLoading && (
+          {isLoading && !trainResults.length && (
              <div className="flex justify-center items-center h-64">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
              </div>
@@ -243,7 +246,7 @@ export default function TrainsPage() {
                   </div>
                   <div className="train-card-price text-center sm:text-right">
                     <h3 className="text-2xl font-bold text-accent mb-2">{train.price}</h3>
-                    <Button variant="outline" onClick={() => alert(`Viewing details for ${train.trainName}`)}>View Details</Button>
+                    <Button variant="outline" onClick={() => handleBookTrain(train)}>Book & Proceed to Pay</Button>
                   </div>
                 </div>
               ))}
@@ -252,12 +255,9 @@ export default function TrainsPage() {
         </section>
       </div>
 
-      {/* Footer (simplified) */}
       <footer className="bg-muted py-8 text-center text-muted-foreground mt-12">
         &copy; {new Date().getFullYear()} TravelEase Simplified. All rights reserved.
       </footer>
     </div>
   );
 }
-
-    

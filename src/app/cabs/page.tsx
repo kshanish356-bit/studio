@@ -10,9 +10,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation'; // Added useRouter
 
 export default function CabBookingPage() {
   const { toast } = useToast();
+  const router = useRouter(); // Initialized useRouter
   const [activeTab, setActiveTab] = useState<'cab' | 'tour'>('cab');
   const [pickupLocation, setPickupLocation] = useState('');
   const [dropoffLocation, setDropoffLocation] = useState('');
@@ -27,26 +29,21 @@ export default function CabBookingPage() {
   const [isLoading, setIsLoading] = useState(false); // For spinner
 
   useEffect(() => {
-    // Initialize Mapbox map here if needed, after the script has loaded
-    // For now, this is a placeholder.
     if (typeof window !== 'undefined' && (window as any).mapboxgl) {
       (window as any).mapboxgl.accessToken = 'YOUR_MAPBOX_ACCESS_TOKEN'; // Replace with your actual token
-      // const map = new (window as any).mapboxgl.Map({
-      //   container: 'map',
-      //   style: 'mapbox://styles/mapbox/streets-v11',
-      //   center: [-74.5, 40],
-      //   zoom: 9
-      // });
       console.log("Mapbox GL JS loaded, map can be initialized.");
       toast({ title: "Map Placeholder", description: "Mapbox would be initialized here. Replace with your token." });
     }
-  }, []);
+  }, [toast]);
 
   const handleBookingSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    toast({ title: "Booking Submitted", description: `Booking from ${pickupLocation} to ${dropoffLocation}. (Placeholder)` });
-    setTimeout(() => setIsLoading(false), 1500); // Simulate API call
+    toast({ title: "Booking Submitted", description: `Booking from ${pickupLocation} to ${dropoffLocation}. Proceeding to payment.` });
+    setTimeout(() => {
+      setIsLoading(false);
+      router.push('/payment'); // Navigate to payment page
+    }, 1500); 
   };
 
   const handleListFormSubmit = (e: React.FormEvent) => {
@@ -85,7 +82,7 @@ export default function CabBookingPage() {
         }}
       />
       <nav style={{ margin: '16px 0 0 16px' }}>
-        <Link href="/" style={{ textDecoration: 'none', color: '#007bff', fontWeight: 'bold', fontSize: '1.1em' }}>
+        <Link href="/" style={{ textDecoration: 'none', color: 'hsl(var(--primary))', fontWeight: 'bold', fontSize: '1.1em' }}>
           &larr; Home
         </Link>
       </nav>
@@ -97,7 +94,7 @@ export default function CabBookingPage() {
           flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 1000
         }}>
           <div style={{ 
-            border: '8px solid #f3f3f3', borderRadius: '50%', borderTop: '8px solid #007bff', 
+            border: '8px solid #f3f3f3', borderRadius: '50%', borderTop: '8px solid hsl(var(--primary))', 
             width: '60px', height: '60px', animation: 'spin 2s linear infinite' 
           }} />
           <div style={{ color: 'white', marginTop: '20px', fontSize: '1.2em' }}>Loading, please wait...</div>
@@ -135,7 +132,7 @@ export default function CabBookingPage() {
                   <Label htmlFor="dropoff">Dropoff Location:</Label>
                   <Input type="text" id="dropoff" name="dropoff" placeholder="Enter dropoff location" required value={dropoffLocation} onChange={(e) => setDropoffLocation(e.target.value)} />
                 </div>
-                <Button type="submit" className="w-full">Book Now</Button>
+                <Button type="submit" className="w-full">Book Now & Proceed to Pay</Button>
               </form>
             </section>
           )}
@@ -162,7 +159,7 @@ export default function CabBookingPage() {
             <ol id="userList" className="list-decimal pl-5 mt-2 space-y-1">
               {userList.map((item, index) => <li key={index}>{item}</li>)}
             </ol>
-            <Button type="button" id="payUPIButton" className="mt-3 w-full bg-accent text-accent-foreground" onClick={() => toast({title: "Pay via UPI", description: "UPI Payment functionality placeholder."})}>Pay via UPI & Book</Button>
+            <Button type="button" id="payUPIButton" className="mt-3 w-full bg-accent text-accent-foreground" onClick={() => router.push('/payment')}>Pay via UPI & Book</Button>
             <div id="message" className="message mt-2"></div>
           </section>
 
@@ -263,5 +260,3 @@ export default function CabBookingPage() {
     </>
   );
 }
-
-    

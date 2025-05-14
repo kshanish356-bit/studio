@@ -10,9 +10,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'; // DialogClose removed as not explicitly used
 import { useToast } from '@/hooks/use-toast';
-import { ArrowUp, Search, Plane, Filter } from 'lucide-react';
+import { ArrowUp, Search, Plane, Filter, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation'; // Added useRouter
 
 interface Flight {
   id: string;
@@ -25,6 +26,7 @@ interface Flight {
 
 export default function FlightsPage() {
   const { toast } = useToast();
+  const router = useRouter(); // Initialized useRouter
 
   // Search form state
   const [fromLocation, setFromLocation] = useState('');
@@ -33,7 +35,7 @@ export default function FlightsPage() {
   const [returnDate, setReturnDate] = useState('');
   const [passengersClass, setPassengersClass] = useState('1-Economy');
 
-  // Filter state (example for stops)
+  // Filter state
   const [fareType, setFareType] = useState('Regular');
   const [nonStop, setNonStop] = useState(false);
   const [oneStop, setOneStop] = useState(false);
@@ -41,15 +43,15 @@ export default function FlightsPage() {
 
   // Modal states
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
-  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
+  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false); // Kept for potential future use
   const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
   const [passengerName, setPassengerName] = useState('');
   const [passengerEmail, setPassengerEmail] = useState('');
-  const [confirmationDetails, setConfirmationDetails] = useState('');
+  const [confirmationDetails, setConfirmationDetails] = useState(''); // Kept for potential future use
 
   // Loading and results
   const [isLoading, setIsLoading] = useState(false);
-  const [flightResults, setFlightResults] = useState<Flight[]>([]); // Placeholder
+  const [flightResults, setFlightResults] = useState<Flight[]>([]);
 
   // Back to top button
   const [showBackToTop, setShowBackToTop] = useState(false);
@@ -76,9 +78,7 @@ export default function FlightsPage() {
   const handleSearchFlights = async () => {
     setIsLoading(true);
     toast({ title: 'Searching Flights', description: `From: ${fromLocation}, To: ${toLocation}` });
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500));
-    // Dummy results
     setFlightResults([
       { id: '1', airlineName: 'Air India', flightNumber: 'AI-101', departureTime: '08:00 AM', arrivalTime: '10:00 AM', price: '₹ 7,500' },
       { id: '2', airlineName: 'Indigo', flightNumber: '6E-202', departureTime: '09:30 AM', arrivalTime: '11:45 AM', price: '₹ 6,800' },
@@ -95,15 +95,23 @@ export default function FlightsPage() {
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Simulate booking
+    toast({ title: 'Processing Booking...', description: `Booking flight ${selectedFlight?.flightNumber} for ${passengerName}.` });
     await new Promise(resolve => setTimeout(resolve, 1000));
-    setConfirmationDetails(`Booking confirmed for ${passengerName} on flight ${selectedFlight?.flightNumber}. Email: ${passengerEmail}`);
-    setIsBookingModalOpen(false);
-    setIsConfirmationModalOpen(true);
+    
+    // Simulate successful booking
+    // In a real app, here you would get a booking ID or confirmation
+    // For now, we assume success and navigate to payment
+    
+    setConfirmationDetails(`Booking confirmed for ${passengerName} on flight ${selectedFlight?.flightNumber}. Email: ${passengerEmail}`); // Store details if needed
+    
+    setIsBookingModalOpen(false); 
+    // setIsConfirmationModalOpen(true); // Confirmation modal might be shown after payment
+    
     setPassengerName('');
     setPassengerEmail('');
     setIsLoading(false);
-    toast({ title: 'Booking Successful!', description: 'Your flight is confirmed.' });
+    toast({ title: 'Booking Processed!', description: 'Proceeding to payment.' });
+    router.push('/payment'); // Navigate to payment page
   };
 
   const handleAirlineChange = (airline: string) => {
@@ -121,7 +129,6 @@ export default function FlightsPage() {
         </Link>
       </nav>
 
-      {/* Top Search Bar */}
       <section className="py-6 bg-secondary shadow-md">
         <div className="container mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end p-4 bg-card rounded-lg shadow">
@@ -162,9 +169,7 @@ export default function FlightsPage() {
         </div>
       </section>
 
-      {/* Main Content */}
       <div className="container mx-auto flex flex-col md:flex-row gap-8 px-4 py-8">
-        {/* Sidebar Filters */}
         <aside className="w-full md:w-1/4 lg:w-1/5 p-6 bg-card rounded-lg shadow-lg self-start">
           <h2 className="text-2xl font-semibold mb-6 flex items-center"><Filter className="mr-2 h-6 w-6 text-primary" /> Filters</h2>
           
@@ -206,30 +211,25 @@ export default function FlightsPage() {
             ))}
           </div>
           
-          {/* Simplified Departure/Arrival Time Filters for brevity */}
           <div className="filter-group mb-6">
             <h3 className="text-lg font-medium mb-3">Departure Time</h3>
-            {/* Add Checkbox components here as needed */}
             <p className="text-sm text-muted-foreground">(e.g., Before 6 AM, 6 AM - 12 PM)</p>
           </div>
 
           <div className="filter-group mb-6">
             <h3 className="text-lg font-medium mb-3">Arrival Time</h3>
-            {/* Add Checkbox components here as needed */}
             <p className="text-sm text-muted-foreground">(e.g., Before 6 AM, 6 AM - 12 PM)</p>
           </div>
 
           <div className="filter-group">
             <h3 className="text-lg font-medium mb-3">One Way Price</h3>
-             {/* Add Checkbox components here as needed */}
             <p className="text-sm text-muted-foreground">(e.g., ₹0 - ₹10,000)</p>
           </div>
         </aside>
 
-        {/* Flight Results */}
         <section className="flex-grow w-full md:w-3/4 lg:w-4/5">
           <h2 className="text-2xl font-semibold mb-6 flex items-center"><Plane className="mr-2 h-6 w-6 text-primary"/> Available Flights</h2>
-          {isLoading && (
+          {isLoading && !flightResults.length && (
              <div className="flex justify-center items-center h-64">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
              </div>
@@ -250,7 +250,7 @@ export default function FlightsPage() {
                   </div>
                   <div className="flight-card-price text-center sm:text-right">
                     <h3 className="text-2xl font-bold text-accent mb-2">{flight.price}</h3>
-                    <Button onClick={() => handleViewFlight(flight)} variant="outline">View Details</Button>
+                    <Button onClick={() => handleViewFlight(flight)} variant="outline">View Details & Book</Button>
                   </div>
                 </div>
               ))}
@@ -259,7 +259,6 @@ export default function FlightsPage() {
         </section>
       </div>
 
-      {/* Booking Modal */}
       <Dialog open={isBookingModalOpen} onOpenChange={setIsBookingModalOpen}>
         <DialogContent>
           <DialogHeader>
@@ -281,14 +280,13 @@ export default function FlightsPage() {
               <Button type="button" variant="outline" onClick={() => setIsBookingModalOpen(false)}>Cancel</Button>
               <Button type="submit" disabled={isLoading}>
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Confirm Booking
+                Confirm & Proceed to Pay
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Booking Confirmation Modal */}
       <Dialog open={isConfirmationModalOpen} onOpenChange={setIsConfirmationModalOpen}>
         <DialogContent>
           <DialogHeader>
@@ -304,7 +302,6 @@ export default function FlightsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Back to Top Button */}
       {showBackToTop && (
         <Button
           onClick={scrollToTop}
@@ -315,18 +312,9 @@ export default function FlightsPage() {
         </Button>
       )}
 
-      {/* Footer (simplified) */}
       <footer className="bg-muted py-8 text-center text-muted-foreground mt-12">
         &copy; {new Date().getFullYear()} TravelEase Simplified. All rights reserved.
       </footer>
-       {/* Global styles for spinner and keyframes can be added to globals.css if needed */}
     </div>
   );
 }
-
-// Placeholder for Loader2 icon if not already available, or use a simple div spinner
-const Loader2: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-);
-
-    
