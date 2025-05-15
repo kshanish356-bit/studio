@@ -327,14 +327,14 @@ export default function CabAndTourPage() {
                     
 
                     <div className="flex justify-between gap-2 mt-4">
-                      <Button variant="outline" onClick={handleUploadClick} className="flex-1 rounded-full">
+                      <Button variant="outline" onClick={handleUploadClick} className="flex-1 rounded-full min-w-0">
                         <UploadCloud className="mr-2 h-4 w-4" /> Upload
                       </Button>
                       <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".json" style={{ display: 'none' }} />
-                      <Button variant="outline" onClick={handleDownloadList} className="flex-1 rounded-full">
+                      <Button variant="outline" onClick={handleDownloadList} className="flex-1 rounded-full min-w-0">
                         <DownloadCloud className="mr-2 h-4 w-4" /> Download
                       </Button>
-                      <Button variant="destructive" onClick={handleClearList} className="flex-1 rounded-full">
+                      <Button variant="destructive" onClick={handleClearList} className="flex-1 rounded-full min-w-0">
                         <Trash2 className="mr-2 h-4 w-4" /> Clear
                       </Button>
                     </div>
