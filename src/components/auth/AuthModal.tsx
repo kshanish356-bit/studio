@@ -187,8 +187,8 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
-        <div className="auth-tabs flex justify-center mb-6 border-b">
+      <DialogContent className="sm:max-w-[425px] bg-transparent border-none shadow-none">
+        <div className="auth-tabs flex justify-center mb-6 border-b border-border/50">
           <button
             className={`tab-btn px-4 py-2 text-lg font-medium ${activeTab === 'login' ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'}`}
             onClick={() => setActiveTab('login')}
