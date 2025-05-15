@@ -59,7 +59,7 @@ export default function AppHeader() {
       <header className="sticky-header p-4 border-b">
         <div className="container mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <Image src="https://placehold.co/40x40.png?text=TE" alt="TravelEase Logo" width={40} height={40} data-ai-hint="logo travel" />
+            <Image src="https://placehold.co/40x40.png" alt="TravelEase Logo" width={40} height={40} data-ai-hint="logo travel" />
             <span className="text-xl font-bold text-primary">TravelEase</span>
           </div>
           <div className="animate-pulse flex items-center space-x-2">
@@ -76,7 +76,7 @@ export default function AppHeader() {
       <header className="sticky-header p-4 border-b">
         <div className="container mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center space-x-2">
-            <Image src="https://placehold.co/40x40.png?text=TE" alt="TravelEase Logo" width={40} height={40} data-ai-hint="logo travel" />
+            <Image src="https://placehold.co/40x40.png" alt="TravelEase Logo" width={40} height={40} data-ai-hint="logo travel" />
             <span className="text-xl font-bold text-primary">TravelEase</span>
           </Link>
 
@@ -103,7 +103,7 @@ export default function AppHeader() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="flex items-center space-x-2">
                     <Image
-                      src={user.image || "https://placehold.co/32x32.png?text=U"}
+                      src={user.image || "https://placehold.co/32x32.png"}
                       alt={user.name || "User"}
                       width={32}
                       height={32}
@@ -195,3 +195,4 @@ export default function AppHeader() {
     </>
   );
 }
+

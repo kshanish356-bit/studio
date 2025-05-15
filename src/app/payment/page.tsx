@@ -22,49 +22,49 @@ interface PaymentMethod {
 }
 
 const upiOptions: PaymentMethod[] = [
-  { id: 'google-pay', name: 'Google Pay', logo: 'https://placehold.co/24x24.png?text=GP', aiHint: 'logo googlepay' },
-  { id: 'phonepe', name: 'PhonePe', logo: 'https://placehold.co/24x24.png?text=PP', aiHint: 'logo phonepe' },
-  { id: 'paytm', name: 'Paytm', logo: 'https://placehold.co/24x24.png?text=PT', aiHint: 'logo paytm' },
-  { id: 'bhim', name: 'BHIM', logo: 'https://placehold.co/24x24.png?text=BH', aiHint: 'logo bhim' },
-  { id: 'amazon-pay', name: 'Amazon Pay UPI', logo: 'https://placehold.co/24x24.png?text=AP', aiHint: 'logo amazonpay' },
-  { id: 'payzapp', name: 'PayZapp', logo: 'https://placehold.co/24x24.png?text=PZ', aiHint: 'logo payzapp' },
+  { id: 'google-pay', name: 'Google Pay', logo: 'https://placehold.co/24x24.png', aiHint: 'logo googlepay' },
+  { id: 'phonepe', name: 'PhonePe', logo: 'https://placehold.co/24x24.png', aiHint: 'logo phonepe' },
+  { id: 'paytm', name: 'Paytm', logo: 'https://placehold.co/24x24.png', aiHint: 'logo paytm' },
+  { id: 'bhim', name: 'BHIM', logo: 'https://placehold.co/24x24.png', aiHint: 'logo bhim' },
+  { id: 'amazon-pay', name: 'Amazon Pay UPI', logo: 'https://placehold.co/24x24.png', aiHint: 'logo amazonpay' },
+  { id: 'payzapp', name: 'PayZapp', logo: 'https://placehold.co/24x24.png', aiHint: 'logo payzapp' },
 ];
 
 const cardOptions: PaymentMethod[] = [
-  { id: 'visa', name: 'Visa', logo: 'https://placehold.co/24x24.png?text=VS', aiHint: 'logo visa' },
-  { id: 'mastercard', name: 'MasterCard', logo: 'https://placehold.co/24x24.png?text=MC', aiHint: 'logo mastercard' },
-  { id: 'amex', name: 'American Express', logo: 'https://placehold.co/24x24.png?text=AX', aiHint: 'logo amex' },
-  { id: 'rupay', name: 'RuPay', logo: 'https://placehold.co/24x24.png?text=RP', aiHint: 'logo rupay' },
-  { id: 'discover', name: 'Discover', logo: 'https://placehold.co/24x24.png?text=DS', aiHint: 'logo discover' },
-  { id: 'diners-club', name: 'Diners Club', logo: 'https://placehold.co/24x24.png?text=DC', aiHint: 'logo dinersclub' },
+  { id: 'visa', name: 'Visa', logo: 'https://placehold.co/24x24.png', aiHint: 'logo visa' },
+  { id: 'mastercard', name: 'MasterCard', logo: 'https://placehold.co/24x24.png', aiHint: 'logo mastercard' },
+  { id: 'amex', name: 'American Express', logo: 'https://placehold.co/24x24.png', aiHint: 'logo amex' },
+  { id: 'rupay', name: 'RuPay', logo: 'https://placehold.co/24x24.png', aiHint: 'logo rupay' },
+  { id: 'discover', name: 'Discover', logo: 'https://placehold.co/24x24.png', aiHint: 'logo discover' },
+  { id: 'diners-club', name: 'Diners Club', logo: 'https://placehold.co/24x24.png', aiHint: 'logo dinersclub' },
 ];
 
 // Static data for net banking and CBDC as backend isn't implemented yet
 const staticNetBankingOptions: PaymentMethod[] = [
-    { id: 'icici', name: 'ICICI Bank', logo: 'https://placehold.co/24x24.png?text=IB', aiHint: 'logo icici' },
-    { id: 'hdfc', name: 'HDFC Bank', logo: 'https://placehold.co/24x24.png?text=HB', aiHint: 'logo hdfc' },
-    { id: 'sbi', name: 'SBI Bank', logo: 'https://placehold.co/24x24.png?text=SB', aiHint: 'logo sbi' },
-    { id: 'axis', name: 'Axis Bank', logo: 'https://placehold.co/24x24.png?text=AB', aiHint: 'logo axis' },
-    { id: 'kotak', name: 'Kotak Mahindra Bank', logo: 'https://placehold.co/24x24.png?text=KM', aiHint: 'logo kotak' },
-    { id: 'indusind', name: 'IndusInd Bank', logo: 'https://placehold.co/24x24.png?text=ID', aiHint: 'logo indusind' },
+    { id: 'icici', name: 'ICICI Bank', logo: 'https://placehold.co/24x24.png', aiHint: 'logo icici' },
+    { id: 'hdfc', name: 'HDFC Bank', logo: 'https://placehold.co/24x24.png', aiHint: 'logo hdfc' },
+    { id: 'sbi', name: 'SBI Bank', logo: 'https://placehold.co/24x24.png', aiHint: 'logo sbi' },
+    { id: 'axis', name: 'Axis Bank', logo: 'https://placehold.co/24x24.png', aiHint: 'logo axis' },
+    { id: 'kotak', name: 'Kotak Mahindra Bank', logo: 'https://placehold.co/24x24.png', aiHint: 'logo kotak' },
+    { id: 'indusind', name: 'IndusInd Bank', logo: 'https://placehold.co/24x24.png', aiHint: 'logo indusind' },
 ];
 
 const staticWalletOptions: PaymentMethod[] = [
-    { id: 'mobikwik', name: 'MobiKwik', logo: 'https://placehold.co/24x24.png?text=MK', aiHint: 'logo mobikwik' },
-    { id: 'paytm-wallet', name: 'Paytm', logo: 'https://placehold.co/24x24.png?text=PTW', aiHint: 'logo paytm' },
-    { id: 'phonepe-wallet', name: 'PhonePe', logo: 'https://placehold.co/24x24.png?text=PPW', aiHint: 'logo phonepe' },
-    { id: 'amazonpay-wallet', name: 'Amazon Pay', logo: 'https://placehold.co/24x24.png?text=APW', aiHint: 'logo amazonpay' },
-    { id: 'freecharge', name: 'Freecharge', logo: 'https://placehold.co/24x24.png?text=FC', aiHint: 'logo freecharge' },
-    { id: 'olamoney', name: 'Ola Money', logo: 'https://placehold.co/24x24.png?text=OM', aiHint: 'logo olamoney' },
-    { id: 'jiomoney', name: 'Jio Money', logo: 'https://placehold.co/24x24.png?text=JM', aiHint: 'logo jiomoney' },
+    { id: 'mobikwik', name: 'MobiKwik', logo: 'https://placehold.co/24x24.png', aiHint: 'logo mobikwik' },
+    { id: 'paytm-wallet', name: 'Paytm', logo: 'https://placehold.co/24x24.png', aiHint: 'logo paytm' },
+    { id: 'phonepe-wallet', name: 'PhonePe', logo: 'https://placehold.co/24x24.png', aiHint: 'logo phonepe' },
+    { id: 'amazonpay-wallet', name: 'Amazon Pay', logo: 'https://placehold.co/24x24.png', aiHint: 'logo amazonpay' },
+    { id: 'freecharge', name: 'Freecharge', logo: 'https://placehold.co/24x24.png', aiHint: 'logo freecharge' },
+    { id: 'olamoney', name: 'Ola Money', logo: 'https://placehold.co/24x24.png', aiHint: 'logo olamoney' },
+    { id: 'jiomoney', name: 'Jio Money', logo: 'https://placehold.co/24x24.png', aiHint: 'logo jiomoney' },
 ];
 
 const staticCBDCOptions: PaymentMethod[] = [
-    { id: 'axis-digital', name: 'Axis Bank Digital Rupee', logo: 'https://placehold.co/24x24.png?text=ADR', aiHint: 'logo axis' },
-    { id: 'hdfc-digital', name: 'HDFC Bank Digital Rupee', logo: 'https://placehold.co/24x24.png?text=HDR', aiHint: 'logo hdfc' },
-    { id: 'yesbank-digital', name: 'Yes Bank e₹ Wallet', logo: 'https://placehold.co/24x24.png?text=YDR', aiHint: 'logo yesbank' },
-    { id: 'icici-digital', name: 'ICICI Bank Digital Rupee', logo: 'https://placehold.co/24x24.png?text=IDR', aiHint: 'logo icici' },
-    { id: 'kotak-digital', name: 'Kotak Mahindra Digital Rupee', logo: 'https://placehold.co/24x24.png?text=KDR', aiHint: 'logo kotak' },
+    { id: 'axis-digital', name: 'Axis Bank Digital Rupee', logo: 'https://placehold.co/24x24.png', aiHint: 'logo axis' },
+    { id: 'hdfc-digital', name: 'HDFC Bank Digital Rupee', logo: 'https://placehold.co/24x24.png', aiHint: 'logo hdfc' },
+    { id: 'yesbank-digital', name: 'Yes Bank e₹ Wallet', logo: 'https://placehold.co/24x24.png', aiHint: 'logo yesbank' },
+    { id: 'icici-digital', name: 'ICICI Bank Digital Rupee', logo: 'https://placehold.co/24x24.png', aiHint: 'logo icici' },
+    { id: 'kotak-digital', name: 'Kotak Mahindra Digital Rupee', logo: 'https://placehold.co/24x24.png', aiHint: 'logo kotak' },
 ];
 
 
@@ -170,7 +170,7 @@ export default function PaymentPage() {
     <>
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
       <div className="min-h-screen bg-gray-100">
-        <nav className="p-4">
+        <nav className="p-4 container mx-auto">
           <Link href="/" className="text-primary hover:text-primary/80 font-bold text-lg inline-flex items-center">
             <ArrowLeft className="mr-2 h-5 w-5" /> Home
           </Link>

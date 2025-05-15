@@ -29,7 +29,7 @@ export default function ProfilePage() {
     if (user) {
       setName(user.name);
       setEmail(user.email);
-      setAvatarUrl(user.image || `https://placehold.co/128x128.png?text=${user.name?.substring(0,2).toUpperCase() || 'U'}`);
+      setAvatarUrl(user.image || 'https://placehold.co/128x128.png');
     }
   }, [user, isAuthenticated, isLoading, router, toast]);
 
@@ -87,7 +87,7 @@ export default function ProfilePage() {
                 <Label htmlFor="avatarFile">Change Avatar (Upload)</Label>
                 <Input id="avatarFile" type="file" accept="image/*" onChange={handleAvatarUpload} />
                  <Label htmlFor="avatarUrl" className="mt-2 block">Or enter Image URL</Label>
-                <Input id="avatarUrl" type="text" placeholder="Image URL" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} />
+                <Input id="avatarUrl" type="text" placeholder="Image URL" value={avatarUrl.startsWith('https://placehold.co') ? '' : avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} />
               </div>
             )}
           </div>
@@ -146,3 +146,4 @@ export default function ProfilePage() {
     </div>
   );
 }
+

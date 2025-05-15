@@ -9,7 +9,7 @@ const testimonials = [
     location: 'New York, USA',
     text: 'Amazing service! Our vacation was perfectly planned and we got great deals on our hotel bookings.',
     rating: 5,
-    image: 'https://placehold.co/100x100.png?text=SJ',
+    image: 'https://placehold.co/100x100.png',
     aiHint: 'woman portrait'
   },
   {
@@ -17,7 +17,7 @@ const testimonials = [
     location: 'Mumbai, India',
     text: 'The train booking was seamless and the customer support was very helpful when we needed to make changes.',
     rating: 4.5,
-    image: 'https://placehold.co/100x100.png?text=RP',
+    image: 'https://placehold.co/100x100.png',
     aiHint: 'man portrait'
   },
 ];
@@ -71,3 +71,4 @@ export default function Testimonials() {
     </section>
   );
 }
+

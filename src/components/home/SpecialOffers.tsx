@@ -12,7 +12,7 @@ const offers = [
     originalPrice: '$1200',
     discountedPrice: '$840',
     badge: '30% OFF',
-    image: 'https://placehold.co/800x600.png?text=Luxury+Hotel',
+    image: 'https://placehold.co/800x600.png',
     aiHint: 'luxury hotel'
   },
   {
@@ -21,7 +21,7 @@ const offers = [
     originalPrice: '$1500',
     discountedPrice: '$999',
     badge: 'FLASH SALE',
-    image: 'https://placehold.co/800x600.png?text=Beach+Resort',
+    image: 'https://placehold.co/800x600.png',
     aiHint: 'beach resort'
   },
 ];
@@ -71,3 +71,4 @@ export default function SpecialOffers() {
     </section>
   );
 }
+
