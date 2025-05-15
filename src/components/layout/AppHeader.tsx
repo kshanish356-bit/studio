@@ -58,9 +58,9 @@ export default function AppHeader() {
     return (
       <header className="sticky-header p-4 border-b">
         <div className="container mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-col items-center space-y-1">
+             <span className="text-sm font-bold text-primary">Top of the Project</span>
             <Image src="https://placehold.co/40x40.png" alt="Top of the Project Logo" width={40} height={40} data-ai-hint="logo abstract" />
-            <span className="text-xl font-bold text-primary">Top of the Project</span>
           </div>
           <div className="animate-pulse flex items-center space-x-2">
             <div className="h-8 w-20 bg-muted rounded"></div>
@@ -75,9 +75,9 @@ export default function AppHeader() {
     <>
       <header className="sticky-header p-4 border-b">
         <div className="container mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center space-x-2">
+          <Link href="/" className="flex flex-col items-center space-y-1">
+            <span className="text-sm font-bold text-primary">Top of the Project</span>
             <Image src="https://placehold.co/40x40.png" alt="Top of the Project Logo" width={40} height={40} data-ai-hint="logo abstract" />
-            <span className="text-xl font-bold text-primary">Top of the Project</span>
           </Link>
 
           {/* Desktop Navigation */}
