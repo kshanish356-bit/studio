@@ -491,8 +491,8 @@ export default function CabAndTourPage() {
     e.preventDefault();
     setIsLoading(true); 
 
-    if (!pickupLocation || !dropoffLocation || !bookingDateTime) {
-      toast({ title: "Missing Information", description: "Please fill all cab booking fields.", variant: "destructive" });
+    if (!pickupLocation || !dropoffLocation) {
+      toast({ title: "Missing Information", description: "Please fill pickup and dropoff locations.", variant: "destructive" });
       setIsLoading(false);
       return;
     }
@@ -513,7 +513,7 @@ export default function CabAndTourPage() {
       return;
     }
     
-    toast({ title: "Cab Booking Submitted", description: `Booking from ${pickupLocation} to ${dropoffLocation} for ${bookingDateTime}. Proceeding to payment.` });
+    toast({ title: "Cab Booking Submitted", description: `Booking from ${pickupLocation} to ${dropoffLocation}${bookingDateTime ? ` for ${bookingDateTime}` : ''}. Proceeding to payment.` });
     setTimeout(() => {
       setIsLoading(false);
       router.push('/payment'); 
@@ -775,8 +775,8 @@ export default function CabAndTourPage() {
                         )}
                       </div>
                       <div>
-                        <Label htmlFor="bookingDateTime">Date & Time</Label>
-                        <Input id="bookingDateTime" type="datetime-local" value={bookingDateTime} onChange={e => setBookingDateTime(e.target.value)} required />
+                        <Label htmlFor="bookingDateTime">Date & Time (Optional)</Label>
+                        <Input id="bookingDateTime" type="datetime-local" value={bookingDateTime} onChange={e => setBookingDateTime(e.target.value)} />
                       </div>
                       <Button type="submit" className="w-full rounded-full bg-accent text-accent-foreground" disabled={(isLoading && activeTab === 'cab') || isCabRouteLoading}>
                         {((isLoading && activeTab === 'cab') || isCabRouteLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Book Now & Proceed to Pay
