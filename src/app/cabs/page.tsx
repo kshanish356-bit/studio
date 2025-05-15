@@ -11,7 +11,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { UploadCloud, DownloadCloud, Trash2, Route, MapPin, Building, Navigation, Edit3, Loader2 } from 'lucide-react';
+import { UploadCloud, DownloadCloud, Trash2, Route, MapPin, Building, Navigation, Edit3, Loader2, Search, Sparkles, ListX } from 'lucide-react';
+import { getCityTouristPlaces, type GetCityTouristPlacesInput, type GetCityTouristPlacesOutput } from '@/ai/flows/city-tourist-places-flow';
+
 
 // Declare mappls for MapmyIndia
 declare global {
@@ -44,7 +46,7 @@ interface MapplsAutosuggestResult {
 }
 
 
-const MAP_MY_INDIA_API_KEY = 'b8558b6a01dd83cc4de527d1a5948af8'; // Replace with your actual key or use env var
+const MAP_MY_INDIA_API_KEY = process.env.NEXT_PUBLIC_MAP_MY_INDIA_API_KEY || 'b8558b6a01dd83cc4de527d1a5948af8';
 
 // Polyline decoding function (standard algorithm)
 function decodeMMIPolyline(encoded: string): MapplsLatLng[] {
@@ -91,6 +93,8 @@ export default function CabAndTourPage() {
   const [isTourStopSuggestionsLoading, setIsTourStopSuggestionsLoading] = useState(false);
   const [showTourStopSuggestions, setShowTourStopSuggestions] = useState(false);
   const tourStopDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [cityAttractions, setCityAttractions] = useState<string[] | null>(null);
+  const [isFetchingCityAttractions, setIsFetchingCityAttractions] = useState(false);
 
 
   // Cab Booking State
@@ -142,7 +146,7 @@ export default function CabAndTourPage() {
   useEffect(() => {
     if (typeof window.mappls !== 'undefined' && mapContainerRef.current && !mapInstanceRef.current) {
       mapInstanceRef.current = new window.mappls.Map(mapContainerRef.current, {
-        center: [20.5937, 78.9629], // Default center (India - Lat, Lon)
+        center: [20.5937, 78.9629], 
         zoom: 4,
       });
       
@@ -399,10 +403,18 @@ export default function CabAndTourPage() {
       setTourStops(prevStops => [...prevStops, { id: newStopId, name: stopName }]);
       addMapMarkerCityTour(stopName, newStopId);
       setTourStopInput('');
-      setShowTourStopSuggestions(false); // Hide suggestions after adding
+      setShowTourStopSuggestions(false); 
     } else {
       toast({ title: "Invalid Stop", description: "Please enter a valid tour stop.", variant: "destructive" });
     }
+  };
+
+  const handleAddAttractionToTour = (attractionName: string) => {
+    setTourStopInput(attractionName); // Set input to trigger addStop with this name
+    // Use a timeout to ensure state is updated before handleAddStop is called
+    setTimeout(() => {
+      handleAddStop();
+    }, 0);
   };
 
   const loadPresetTour = (stops: string[]) => {
@@ -554,6 +566,31 @@ export default function CabAndTourPage() {
     }, 1500);
   };
 
+  const handleFetchCityAttractions = async () => {
+    if (!tourStopInput.trim()) {
+      toast({ title: "Input Needed", description: "Please enter a city name in the 'Enter tour stop' field first.", variant: "default" });
+      return;
+    }
+    setIsFetchingCityAttractions(true);
+    setCityAttractions(null);
+    try {
+      const result: GetCityTouristPlacesOutput = await getCityTouristPlaces({ cityName: tourStopInput.trim() });
+      if (result && result.attractions && result.attractions.length > 0) {
+        setCityAttractions(result.attractions);
+        toast({ title: "Attractions Found!", description: `Showing attractions for ${tourStopInput.trim()}. Click to add to your tour.` });
+      } else {
+        setCityAttractions([]); // Set to empty array to indicate no attractions found or city not recognized
+        toast({ title: "No Attractions Found", description: `Could not find attractions for "${tourStopInput.trim()}" or it's not a recognized Indian city.`, variant: "default" });
+      }
+    } catch (error) {
+      console.error("Error fetching city attractions:", error);
+      toast({ title: "AI Error", description: "Failed to fetch city attractions. Please try again.", variant: "destructive" });
+      setCityAttractions([]);
+    } finally {
+      setIsFetchingCityAttractions(false);
+    }
+  };
+
   const presetTours = {
     "Delhi Darshan": ['India Gate, Delhi', 'Red Fort, Delhi', 'Qutub Minar, Delhi'],
     "Mumbai Magic": ['Gateway of India, Mumbai', 'Marine Drive, Mumbai', 'Elephanta Caves, Mumbai'],
@@ -575,7 +612,7 @@ export default function CabAndTourPage() {
         </Link>
       </nav>
 
-      {(isLoading || isCabRouteLoading || isPickupSuggestionsLoading || isDropoffSuggestionsLoading || isCity1LoadingSuggestions || isCity2LoadingSuggestions || isCity3LoadingSuggestions || isTourStopSuggestionsLoading) && (
+      {(isLoading || isCabRouteLoading || isPickupSuggestionsLoading || isDropoffSuggestionsLoading || isCity1LoadingSuggestions || isCity2LoadingSuggestions || isCity3LoadingSuggestions || isTourStopSuggestionsLoading || isFetchingCityAttractions) && (
         <div className="fixed inset-0 bg-black/50 flex flex-col items-center justify-center z-[1000]">
           <Loader2 className="h-16 w-16 text-primary animate-spin" />
           <div className="text-white mt-4 text-lg">Loading, please wait...</div>
@@ -636,11 +673,10 @@ export default function CabAndTourPage() {
                             }}
                             onFocus={() => tourStopInput && tourStopSuggestions.length > 0 && setShowTourStopSuggestions(true)}
                             onBlur={() => setTimeout(() => setShowTourStopSuggestions(false), 200)}
-                            placeholder="Enter tour stop (e.g., India Gate)"
+                            placeholder="Enter tour stop or city name"
                             className="flex-grow"
                           />
                           {isTourStopSuggestionsLoading && <Loader2 className="h-5 w-5 animate-spin" />}
-                          <Button variant="outline" onClick={handleAddStop} className="rounded-full">Add Stop</Button>
                        </div>
                         {showTourStopSuggestions && tourStopSuggestions.length > 0 && (
                           <ul className="absolute z-10 w-full bg-card border border-border rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
@@ -657,8 +693,49 @@ export default function CabAndTourPage() {
                           </ul>
                         )}
                     </div>
+                    <div className="flex gap-2 mb-2">
+                        <Button variant="outline" onClick={handleAddStop} className="flex-1 rounded-full">
+                            <MapPin className="mr-2 h-4 w-4" /> Add Stop to Tour
+                        </Button>
+                        <Button variant="outline" onClick={handleFetchCityAttractions} className="flex-1 rounded-full" disabled={!tourStopInput.trim() || isFetchingCityAttractions}>
+                            {isFetchingCityAttractions ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                            Suggest Attractions
+                        </Button>
+                    </div>
+                     {isFetchingCityAttractions && (
+                        <div className="text-center py-2">
+                            <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
+                            <p className="text-sm text-muted-foreground">Fetching attractions...</p>
+                        </div>
+                    )}
+                    {cityAttractions && cityAttractions.length > 0 && (
+                        <div className="mt-4">
+                            <div className="flex justify-between items-center mb-2">
+                                <h6 className="font-medium">Suggested Attractions for {tourStopInput.trim()}:</h6>
+                                <Button variant="ghost" size="sm" onClick={() => setCityAttractions(null)} className="text-xs">
+                                    <ListX className="mr-1 h-3 w-3" /> Clear
+                                </Button>
+                            </div>
+                            <ul className="list-disc pl-5 space-y-1 max-h-40 overflow-y-auto border rounded-md p-3 bg-secondary/20">
+                                {cityAttractions.map((attraction, index) => (
+                                <li key={index} className="text-sm">
+                                    <button 
+                                    onClick={() => handleAddAttractionToTour(attraction)} 
+                                    className="text-left hover:text-primary hover:underline w-full"
+                                    title={`Add ${attraction} to your tour`}
+                                    >
+                                    {attraction}
+                                    </button>
+                                </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                    {cityAttractions && cityAttractions.length === 0 && !isFetchingCityAttractions && (
+                         <p className="text-muted-foreground text-sm py-2 text-center">No specific attractions found for "{tourStopInput.trim()}", or it's not a recognized Indian city for attraction listing.</p>
+                    )}
                     
-                    <h6 className="mt-4 font-medium">Your Tour Stops:</h6>
+                    <h6 className="mt-4 font-medium">Your Custom Tour Stops:</h6>
                     {tourStops.length === 0 ? (
                       <p className="text-muted-foreground text-sm py-2">No stops added yet.</p>
                     ) : (
