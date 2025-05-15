@@ -8,28 +8,28 @@ const destinations = [
   {
     name: 'Paris, France',
     description: 'Experience the city of love with iconic landmarks and romantic ambiance.',
-    price: '$599',
+    price: '₹1,20,000',
     image: 'https://placehold.co/800x600.png',
     aiHint: 'paris city'
   },
   {
     name: 'Bali, Indonesia',
     description: 'Tropical paradise with stunning beaches and vibrant culture.',
-    price: '$799',
+    price: '₹85,000',
     image: 'https://placehold.co/800x600.png',
     aiHint: 'bali beach'
   },
   {
     name: 'Tokyo, Japan',
     description: 'Where futuristic technology meets ancient traditions.',
-    price: '$899',
+    price: '₹1,50,000',
     image: 'https://placehold.co/800x600.png',
     aiHint: 'tokyo city'
   },
   {
     name: 'New York, USA',
     description: 'The city that never sleeps with iconic skyscrapers and Broadway shows.',
-    price: '$699',
+    price: '₹1,35,000',
     image: 'https://placehold.co/800x600.png',
     aiHint: 'newyork city'
   },

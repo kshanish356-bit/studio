@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview AI-powered personalized trip suggestions.
@@ -13,7 +14,7 @@ import {z} from 'genkit'; // Using z from genkit as per examples
 // Define Input Schema
 const PersonalizedTripSuggestionsInputSchema = z.object({
   travelHistory: z.string().describe("The user's past travel experiences, including destinations, activities enjoyed, and duration."),
-  preferences: z.string().describe("The user's current travel preferences, such as budget, desired activities, travel style (e.g., adventure, relaxation), and trip length."),
+  preferences: z.string().describe("The user's current travel preferences, such as budget (preferably in INR), desired activities, travel style (e.g., adventure, relaxation), and trip length."),
 });
 export type PersonalizedTripSuggestionsInput = z.infer<typeof PersonalizedTripSuggestionsInputSchema>;
 
@@ -21,7 +22,7 @@ export type PersonalizedTripSuggestionsInput = z.infer<typeof PersonalizedTripSu
 const SuggestionSchema = z.object({
   destination: z.string().describe("The suggested destination (e.g., 'Paris, France', 'Kyoto, Japan')."),
   reason: z.string().describe("A brief explanation for why this destination is recommended based on the user's history and preferences."),
-  estimatedCost: z.string().describe("A general estimate of the trip cost (e.g., '$1000 - $1500 USD', 'Around €800')."),
+  estimatedCost: z.string().describe("A general estimate of the trip cost in INR (e.g., '₹50,000 - ₹75,000 INR', 'Around ₹60,000')."),
   suggestedDuration: z.string().describe("A recommended duration for the trip (e.g., '5-7 days', '2 weeks')."),
 });
 
@@ -52,12 +53,12 @@ User's Preferences:
 Based on this information, provide 2-3 diverse trip suggestions. For each suggestion, include:
 1.  Destination: The city and country.
 2.  Reason: Why it's a good fit for the user.
-3.  Estimated Cost: A general cost range.
+3.  Estimated Cost: A general cost range in Indian Rupees (INR). For example: "₹70,000 - ₹90,000 INR".
 4.  Suggested Duration: How long the trip might be.
 
 Follow these guidelines:
 - If past travels indicate enjoyment of certain activities or destination types, suggest similar or complementary options.
-- Align suggestions with any stated budget or preferences.
+- Align suggestions with any stated budget or preferences (assume budgets are in INR if not specified).
 - Offer a variety of options if possible.
 - Be concise and helpful.
 `,

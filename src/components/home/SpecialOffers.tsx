@@ -9,8 +9,8 @@ const offers = [
   {
     title: 'Luxury Hotel Package',
     description: '5 nights with breakfast + airport transfer',
-    originalPrice: '$1200',
-    discountedPrice: '$840',
+    originalPrice: '₹1,20,000',
+    discountedPrice: '₹84,000',
     badge: '30% OFF',
     image: 'https://placehold.co/800x600.png',
     aiHint: 'luxury hotel'
@@ -18,8 +18,8 @@ const offers = [
   {
     title: 'Beach Resort Getaway',
     description: 'All-inclusive 7-day vacation for two',
-    originalPrice: '$1500',
-    discountedPrice: '$999',
+    originalPrice: '₹1,50,000',
+    discountedPrice: '₹99,900',
     badge: 'FLASH SALE',
     image: 'https://placehold.co/800x600.png',
     aiHint: 'beach resort'

@@ -89,7 +89,7 @@ export default function PersonalizedSuggestions() {
                   id="preferences"
                   value={preferences}
                   onChange={(e) => setPreferences(e.target.value)}
-                  placeholder="e.g., Interested in beach destinations, budget around $1000-$2000, prefer relaxed pace, enjoy local food and cultural experiences. Looking for a 5-7 day trip."
+                  placeholder="e.g., Interested in beach destinations, budget around ₹80,000 - ₹1,20,000, prefer relaxed pace, enjoy local food and cultural experiences. Looking for a 5-7 day trip."
                   rows={4}
                   className="mt-2"
                 />
