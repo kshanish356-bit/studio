@@ -25,7 +25,7 @@ const navLinks = [
   { href: '/flights', label: 'Flights', icon: Plane },
   { href: '/trains', label: 'Trains', icon: Train },
   { href: '/hotels', label: 'Hotels', icon: Hotel },
-  { href: '/house-rent', label: 'House Rent', icon: Building }, // Changed icon
+  { href: '/house-rent', label: 'House Rent', icon: Building },
   { href: '/bus', label: 'Bus', icon: Bus },
   { href: '/cabs', label: 'Cabs', icon: CarTaxiFront },
   { href: '/holiday-packages', label: 'Holiday Packages', icon: Briefcase },
@@ -59,8 +59,8 @@ export default function AppHeader() {
       <header className="sticky-header p-4 border-b">
         <div className="container mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <Image src="https://placehold.co/40x40.png" alt="TravelEase Logo" width={40} height={40} data-ai-hint="logo travel" />
-            <span className="text-xl font-bold text-primary">TravelEase</span>
+            <Image src="https://placehold.co/40x40.png" alt="Top of the Project Logo" width={40} height={40} data-ai-hint="logo abstract" />
+            <span className="text-xl font-bold text-primary">Top of the Project</span>
           </div>
           <div className="animate-pulse flex items-center space-x-2">
             <div className="h-8 w-20 bg-muted rounded"></div>
@@ -76,8 +76,8 @@ export default function AppHeader() {
       <header className="sticky-header p-4 border-b">
         <div className="container mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center space-x-2">
-            <Image src="https://placehold.co/40x40.png" alt="TravelEase Logo" width={40} height={40} data-ai-hint="logo travel" />
-            <span className="text-xl font-bold text-primary">TravelEase</span>
+            <Image src="https://placehold.co/40x40.png" alt="Top of the Project Logo" width={40} height={40} data-ai-hint="logo abstract" />
+            <span className="text-xl font-bold text-primary">Top of the Project</span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -195,4 +195,3 @@ export default function AppHeader() {
     </>
   );
 }
-

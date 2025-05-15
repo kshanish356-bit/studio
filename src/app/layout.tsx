@@ -14,22 +14,28 @@ const roboto = Roboto({
 });
 
 export const metadata: Metadata = {
-  title: 'TravelEase Simplified - Your Journey Begins Here',
-  description: 'Book flights, hotels, trains, and more with TravelEase. Your journey begins here!',
+  title: 'Top of the Project - Your Journey Begins Here',
+  description: 'Book flights, hotels, trains, and more with Top of the Project. Your journey begins here!',
   keywords: 'travel, flights, hotels, trains, booking, vacation, deals',
   openGraph: {
-    title: 'TravelEase Simplified - Your Journey Begins Here',
-    description: 'Book flights, hotels, trains, and more with TravelEase. Your journey begins here!',
+    title: 'Top of the Project - Your Journey Begins Here',
+    description: 'Book flights, hotels, trains, and more with Top of the Project. Your journey begins here!',
     images: [
       {
-        url: 'https://placehold.co/1200x630.png?text=TravelEase', // Placeholder for social image
+        url: 'https://placehold.co/1200x630.png', 
         width: 1200,
         height: 630,
-        alt: 'TravelEase Social Image',
+        alt: 'Top of the Project Social Image',
       },
     ],
     type: 'website',
   },
+  twitter: { // Added twitter card metadata
+    card: 'summary_large_image',
+    title: 'Top of the Project - Your Journey Begins Here',
+    description: 'Book flights, hotels, trains, and more with Top of the Project. Your journey begins here!',
+    images: ['https://placehold.co/1200x630.png'], 
+  }
 };
 
 export default function RootLayout({
@@ -55,5 +61,3 @@ export default function RootLayout({
     </html>
   );
 }
-
-    
