@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { UploadCloud, DownloadCloud, Trash2, Route, MapPin, Building, Navigation, Edit3, Loader2 } from 'lucide-react';
+import { UploadCloud, DownloadCloud, Trash2, Route, MapPin, Building, Navigation, Edit3, Loader2, ListX } from 'lucide-react';
 
 
 // Declare mappls for MapmyIndia
@@ -43,7 +43,6 @@ interface MapplsAutosuggestResult {
   alternateName: string;
   keywords: string[];
 }
-
 
 const MAP_MY_INDIA_API_KEY = process.env.NEXT_PUBLIC_MAP_MY_INDIA_API_KEY || 'b8558b6a01dd83cc4de527d1a5948af8';
 
@@ -129,7 +128,7 @@ export default function CabAndTourPage() {
   const city3DebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
 
-  const [isLoading, setIsLoading] = useState(false); // General loading state
+  const [isLoading, setIsLoading] = useState(false); // General loading state for page-level actions
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<any>(null); // For MapmyIndia map instance
@@ -141,7 +140,7 @@ export default function CabAndTourPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    if (typeof window.mappls !== 'undefined' && mapContainerRef.current && !mapInstanceRef.current) {
+    if (MAP_MY_INDIA_API_KEY && MAP_MY_INDIA_API_KEY !== 'YOUR_MAP_MY_INDIA_API_KEY_HERE' && typeof window.mappls !== 'undefined' && mapContainerRef.current && !mapInstanceRef.current) {
       mapInstanceRef.current = new window.mappls.Map(mapContainerRef.current, {
         center: [20.5937, 78.9629], 
         zoom: 4,
@@ -561,10 +560,12 @@ export default function CabAndTourPage() {
     "Agra Wonders": ['Taj Mahal, Agra', 'Agra Fort, Agra', 'Fatehpur Sikri, Agra'],
   };
 
+  const mapSdkUrl = `https://apis.mapmyindia.com/advancedmaps/v1/${MAP_MY_INDIA_API_KEY}/map_sdk.js`;
+
   return (
     <>
       <Script
-        src={`https://apis.mapmyindia.com/advancedmaps/v1/${MAP_MY_INDIA_API_KEY}/map_sdk.js`}
+        src={mapSdkUrl}
         strategy="afterInteractive"
         onLoad={() => {
           // console.log('MapmyIndia SDK script loaded.');
@@ -902,7 +903,8 @@ export default function CabAndTourPage() {
             <Card className="p-1 md:p-2 shadow-lg h-[520px] md:h-auto">
               <CardContent className="p-0 h-full">
                 <div ref={mapContainerRef} className="w-full h-full rounded-md min-h-[500px] bg-muted flex items-center justify-center">
-                  {typeof window !== 'undefined' && !window.mappls && <p className="text-muted-foreground">Initializing map...</p>}
+                  {(!MAP_MY_INDIA_API_KEY || MAP_MY_INDIA_API_KEY === 'YOUR_MAP_MY_INDIA_API_KEY_HERE') && <p className="text-destructive p-4 text-center">MapmyIndia API Key is not configured. Please set NEXT_PUBLIC_MAP_MY_INDIA_API_KEY in your .env.local file.</p>}
+                  {(MAP_MY_INDIA_API_KEY && MAP_MY_INDIA_API_KEY !== 'YOUR_MAP_MY_INDIA_API_KEY_HERE' && typeof window !== 'undefined' && !window.mappls) && <p className="text-muted-foreground">Initializing map...</p>}
                 </div>
               </CardContent>
             </Card>
