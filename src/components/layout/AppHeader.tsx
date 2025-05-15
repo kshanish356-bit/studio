@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect, useRef } from 'react';
 import {
-  Home, Plane, Train, Hotel, Bus, CarTaxiFront, Briefcase, Shield, Moon, User, ChevronDown, UserCircle, Settings, LogOut, Menu
+  Home, Plane, Train, Hotel, Bus, CarTaxiFront, Briefcase, Shield, Moon, User, ChevronDown, UserCircle, Settings, LogOut, Menu, Building
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AuthModal } from '@/components/auth/AuthModal';
@@ -25,7 +25,7 @@ const navLinks = [
   { href: '/flights', label: 'Flights', icon: Plane },
   { href: '/trains', label: 'Trains', icon: Train },
   { href: '/hotels', label: 'Hotels', icon: Hotel },
-  { href: '/house-rent', label: 'House Rent', icon: Home }, // Using Home again, consider a different icon
+  { href: '/house-rent', label: 'House Rent', icon: Building }, // Changed icon
   { href: '/bus', label: 'Bus', icon: Bus },
   { href: '/cabs', label: 'Cabs', icon: CarTaxiFront },
   { href: '/holiday-packages', label: 'Holiday Packages', icon: Briefcase },
