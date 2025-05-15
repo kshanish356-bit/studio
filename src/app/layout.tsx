@@ -46,7 +46,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <head>
-        <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+        {/* Removed Mapbox GL CSS link */}
       </head>
       <body className={`${roboto.variable} font-sans antialiased`}>
         <AuthProvider>

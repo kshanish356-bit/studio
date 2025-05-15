@@ -8,15 +8,15 @@ import Script from 'next/script';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'; // CardHeader and CardTitle are used, so kept.
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { UploadCloud, DownloadCloud, Trash2, Route, MapPin, Building, Navigation, Edit3, Loader2 } from 'lucide-react';
 
-// Declare mapboxgl
+// Declare mappls for MapmyIndia
 declare global {
   interface Window {
-    mapboxgl: any;
+    mappls: any;
   }
 }
 
@@ -25,7 +25,47 @@ type ActiveTab = 'cityTour' | 'cab' | 'multiCity';
 interface TourStop {
   id: string; // Unique ID for React key
   name: string;
+  coords?: [number, number]; // [latitude, longitude]
 }
+
+interface MapplsLatLng {
+  lat: number;
+  lng: number;
+}
+
+const MAP_MY_INDIA_API_KEY = 'b8558b6a01dd83cc4de527d1a5948af8'; // Extracted from the script URL
+
+// Polyline decoding function (standard algorithm)
+function decodeMMIPolyline(encoded: string): MapplsLatLng[] {
+  let points: MapplsLatLng[] = [];
+  let index = 0, len = encoded.length;
+  let lat = 0, lng = 0;
+
+  while (index < len) {
+    let b, shift = 0, result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    let dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
+    lat += dlat;
+
+    shift = 0;
+    result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    let dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
+    lng += dlng;
+
+    points.push({ lat: lat / 1e5, lng: lng / 1e5 });
+  }
+  return points;
+}
+
 
 export default function CabAndTourPage() {
   const { toast } = useToast();
@@ -41,8 +81,8 @@ export default function CabAndTourPage() {
   const [pickupLocation, setPickupLocation] = useState('');
   const [dropoffLocation, setDropoffLocation] = useState('');
   const [bookingDateTime, setBookingDateTime] = useState('');
-  const [pickupCoordsCab, setPickupCoordsCab] = useState<[number, number] | null>(null);
-  const [dropoffCoordsCab, setDropoffCoordsCab] = useState<[number, number] | null>(null);
+  const [pickupCoordsCab, setPickupCoordsCab] = useState<MapplsLatLng | null>(null);
+  const [dropoffCoordsCab, setDropoffCoordsCab] = useState<MapplsLatLng | null>(null);
   const [isCabRouteLoading, setIsCabRouteLoading] = useState(false);
 
   // Multi-City State
@@ -53,84 +93,93 @@ export default function CabAndTourPage() {
   const [isLoading, setIsLoading] = useState(false); // General loading state
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
-  const mapInstanceRef = useRef<any>(null); // For Mapbox map instance
-  const markersRef = useRef<any[]>([]); // For Mapbox marker instances (City Tour)
+  const mapInstanceRef = useRef<any>(null); // For MapmyIndia map instance
+  const cityTourMarkersRef = useRef<any[]>([]);
   const pickupMarkerRefCab = useRef<any>(null);
   const dropoffMarkerRefCab = useRef<any>(null);
+  const cabRoutePolylineRef = useRef<any>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const MAPBOX_ACCESS_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || 'pk.eyJ1IjoiZXhhbXBsZXVzZXIiLCJhIjoiY2wxeGJlb2F4MDE3YzJubHVmZmJoYjB4OCJ9.3p0YO7nprdfRCVzmE-Ujgg'; 
-
   useEffect(() => {
-    if (typeof window.mapboxgl !== 'undefined' && mapContainerRef.current && !mapInstanceRef.current) {
-      window.mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
-      const map = new window.mapboxgl.Map({
-        container: mapContainerRef.current,
-        style: 'mapbox://styles/mapbox/streets-v11',
-        center: [78.9629, 20.5937], // Default center (India)
+    if (typeof window.mappls !== 'undefined' && mapContainerRef.current && !mapInstanceRef.current) {
+      mapInstanceRef.current = new window.mappls.Map(mapContainerRef.current, {
+        center: [20.5937, 78.9629], // Default center (India - Lat, Lon)
         zoom: 4,
       });
-      mapInstanceRef.current = map;
-
-      map.on('load', () => {
-        // console.log("Map loaded successfully.");
+      
+      mapInstanceRef.current.addListener('load', () => {
+        // console.log("MapmyIndia Map loaded successfully.");
       });
 
       return () => {
-        if (mapInstanceRef.current) {
-            mapInstanceRef.current.remove();
+        if (mapInstanceRef.current && typeof mapInstanceRef.current.destroy === 'function') {
+            mapInstanceRef.current.destroy(); // MapmyIndia might use destroy()
             mapInstanceRef.current = null;
         }
       };
     }
-  }, [MAPBOX_ACCESS_TOKEN]);
+  }, []);
 
-  const addMapMarkerCityTour = useCallback(async (stopName: string) => {
-    if (!mapInstanceRef.current || !window.mapboxgl) return;
+  const addMapMarkerCityTour = useCallback(async (stopName: string, stopId: string) => {
+    if (!mapInstanceRef.current || !window.mappls) return;
 
     try {
-      const geocodeURL = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(stopName)}.json?access_token=${MAPBOX_ACCESS_TOKEN}&country=IN`;
+      const geocodeURL = `https://atlas.mapmyindia.com/api/places/geocode?address=${encodeURIComponent(stopName)}&key=${MAP_MY_INDIA_API_KEY}`;
       const response = await fetch(geocodeURL);
       const data = await response.json();
-      const coordinates = data.features[0]?.geometry.coordinates;
+      
+      const bestResult = data.copResults && data.copResults.length > 0 ? data.copResults[0] : null;
 
-      if (coordinates) {
-        const marker = new window.mapboxgl.Marker()
-          .setLngLat(coordinates)
-          .addTo(mapInstanceRef.current);
-        markersRef.current.push(marker);
-        mapInstanceRef.current.flyTo({ center: coordinates, zoom: 12 });
+      if (bestResult && bestResult.latitude && bestResult.longitude) {
+        const coordinates: MapplsLatLng = { lat: parseFloat(bestResult.latitude), lng: parseFloat(bestResult.longitude) };
+        const marker = new window.mappls.Marker({
+          map: mapInstanceRef.current,
+          position: coordinates,
+          title: stopName
+        });
+        cityTourMarkersRef.current.push(marker);
+        mapInstanceRef.current.setCenter(coordinates);
+        mapInstanceRef.current.setZoom(12);
+        
+        setTourStops(prevStops => prevStops.map(s => s.id === stopId ? {...s, coords: [coordinates.lat, coordinates.lng]} : s));
+
       } else {
         toast({ title: "Location not found", description: `Could not find coordinates for: ${stopName}`, variant: "destructive" });
       }
     } catch (error) {
-      console.error("Error adding city tour marker:", error);
+      console.error("Error adding city tour marker (MapmyIndia):", error);
       toast({ title: "Geocoding Error", description: `Failed to geocode: ${stopName}`, variant: "destructive" });
     }
-  }, [MAPBOX_ACCESS_TOKEN, toast]);
+  }, [toast]);
 
   const geocodeAndSetMarkerCab = useCallback(async (address: string, type: 'pickup' | 'dropoff') => {
-    if (!mapInstanceRef.current || !window.mapboxgl || !address.trim()) return null;
+    if (!mapInstanceRef.current || !window.mappls || !address.trim()) return null;
     setIsCabRouteLoading(true);
     try {
-      const geocodeURL = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${MAPBOX_ACCESS_TOKEN}&country=IN`;
+      const geocodeURL = `https://atlas.mapmyindia.com/api/places/geocode?address=${encodeURIComponent(address)}&key=${MAP_MY_INDIA_API_KEY}`;
       const response = await fetch(geocodeURL);
       const data = await response.json();
-      const coordinates = data.features[0]?.geometry.coordinates;
+      const bestResult = data.copResults && data.copResults.length > 0 ? data.copResults[0] : null;
 
-      if (coordinates) {
+      if (bestResult && bestResult.latitude && bestResult.longitude) {
+        const coordinates: MapplsLatLng = { lat: parseFloat(bestResult.latitude), lng: parseFloat(bestResult.longitude) };
+        
         const markerColor = type === 'pickup' ? '#007bff' : '#dc3545'; // Blue for pickup, Red for dropoff
-        const existingMarkerRef = type === 'pickup' ? pickupMarkerRefCab : dropoffMarkerRefCab;
+        // MapmyIndia marker styling might be different, using default for now
+        // or use icon options if available in mappls.Marker
 
+        const existingMarkerRef = type === 'pickup' ? pickupMarkerRefCab : dropoffMarkerRefCab;
         if (existingMarkerRef.current) {
           existingMarkerRef.current.remove();
         }
         
-        const newMarker = new window.mapboxgl.Marker({ color: markerColor })
-          .setLngLat(coordinates)
-          .setPopup(new window.mapboxgl.Popup().setText(address))
-          .addTo(mapInstanceRef.current);
+        const newMarker = new window.mappls.Marker({
+          map: mapInstanceRef.current,
+          position: coordinates,
+          title: address,
+          // icon_url: type === 'pickup' ? 'pickup_icon.png' : 'dropoff_icon.png' // Example for custom icons
+        });
         
         if (type === 'pickup') {
           pickupMarkerRefCab.current = newMarker;
@@ -139,65 +188,60 @@ export default function CabAndTourPage() {
           dropoffMarkerRefCab.current = newMarker;
           setDropoffCoordsCab(coordinates);
         }
-        mapInstanceRef.current.flyTo({ center: coordinates, zoom: 12 });
+        mapInstanceRef.current.setCenter(coordinates);
+        mapInstanceRef.current.setZoom(12);
         return coordinates;
       } else {
         toast({ title: "Location not found", description: `Could not find coordinates for: ${address}`, variant: "destructive" });
         return null;
       }
     } catch (error) {
-      console.error(`Error geocoding ${type} for cab:`, error);
+      console.error(`Error geocoding ${type} for cab (MapmyIndia):`, error);
       toast({ title: "Geocoding Error", description: `Failed to geocode: ${address}`, variant: "destructive" });
       return null;
     } finally {
-       if (type === 'dropoff') setIsCabRouteLoading(false); // Only stop loading after dropoff attempted
+       if (type === 'dropoff' || (type === 'pickup' && !dropoffLocation) ) setIsCabRouteLoading(false);
     }
-  }, [MAPBOX_ACCESS_TOKEN, toast]);
+  }, [toast, dropoffLocation]);
 
-  const fetchAndDrawCabRoute = useCallback(async (start: [number, number], end: [number, number]) => {
-    if (!mapInstanceRef.current || !window.mapboxgl) return;
+  const fetchAndDrawCabRoute = useCallback(async (start: MapplsLatLng, end: MapplsLatLng) => {
+    if (!mapInstanceRef.current || !window.mappls) return;
     setIsCabRouteLoading(true);
     try {
-      const directionsURL = `https://api.mapbox.com/directions/v5/mapbox/driving/${start[0]},${start[1]};${end[0]},${end[1]}?geometries=geojson&access_token=${MAPBOX_ACCESS_TOKEN}`;
+      const directionsURL = `https://atlas.mapmyindia.com/api/routemon/vector/driving/${start.lng},${start.lat};${end.lng},${end.lat}?key=${MAP_MY_INDIA_API_KEY}&alternatives=false&overview=full&geometries=polyline&steps=false`;
       const response = await fetch(directionsURL);
       const data = await response.json();
 
-      if (data.routes && data.routes.length > 0) {
-        const route = data.routes[0].geometry;
-        if (mapInstanceRef.current.getSource('cab-route')) {
-          mapInstanceRef.current.getSource('cab-route').setData(route);
-        } else {
-          mapInstanceRef.current.addSource('cab-route', {
-            type: 'geojson',
-            data: route
-          });
-          mapInstanceRef.current.addLayer({
-            id: 'cab-route-layer',
-            type: 'line',
-            source: 'cab-route',
-            layout: {
-              'line-join': 'round',
-              'line-cap': 'round'
-            },
-            paint: {
-              'line-color': '#007BFF', // Primary color
-              'line-width': 5,
-              'line-opacity': 0.8
-            }
-          });
+      if (data.routes && data.routes.length > 0 && data.routes[0].geometry) {
+        const encodedPolyline = data.routes[0].geometry;
+        const decodedPath = decodeMMIPolyline(encodedPolyline);
+
+        if (cabRoutePolylineRef.current) {
+          cabRoutePolylineRef.current.remove();
         }
-        const bounds = new window.mapboxgl.LngLatBounds(start, end);
+
+        cabRoutePolylineRef.current = new window.mappls.Polyline({
+          map: mapInstanceRef.current,
+          path: decodedPath,
+          color: '#007BFF', // Primary color
+          opacity: 0.8,
+          weight: 5
+        });
+        
+        const bounds = new window.mappls.Bounds();
+        decodedPath.forEach((point: MapplsLatLng) => bounds.extend(point));
         mapInstanceRef.current.fitBounds(bounds, { padding: 50 });
+
       } else {
         toast({ title: "Route not found", description: "Could not find a route between the locations.", variant: "destructive" });
       }
     } catch (error) {
-      console.error("Error fetching cab route:", error);
+      console.error("Error fetching cab route (MapmyIndia):", error);
       toast({ title: "Routing Error", description: "Failed to fetch route.", variant: "destructive" });
     } finally {
       setIsCabRouteLoading(false);
     }
-  }, [MAPBOX_ACCESS_TOKEN, toast]);
+  }, [toast]);
   
   useEffect(() => {
     if (pickupCoordsCab && dropoffCoordsCab) {
@@ -209,8 +253,9 @@ export default function CabAndTourPage() {
   const handleAddStop = () => {
     const stopName = tourStopInput.trim();
     if (stopName) {
-      setTourStops(prevStops => [...prevStops, { id: Date.now().toString(), name: stopName }]);
-      addMapMarkerCityTour(stopName);
+      const newStopId = Date.now().toString();
+      setTourStops(prevStops => [...prevStops, { id: newStopId, name: stopName }]);
+      addMapMarkerCityTour(stopName, newStopId);
       setTourStopInput('');
     } else {
       toast({ title: "Invalid Stop", description: "Please enter a valid tour stop.", variant: "destructive" });
@@ -218,19 +263,27 @@ export default function CabAndTourPage() {
   };
 
   const loadPresetTour = (stops: string[]) => {
-    markersRef.current.forEach(marker => marker.remove());
-    markersRef.current = [];
-    setTourStops(stops.map(s => ({ id: Date.now().toString() + s + Math.random(), name: s })));
-    stops.forEach(stop => addMapMarkerCityTour(stop));
+    cityTourMarkersRef.current.forEach(marker => marker.remove());
+    cityTourMarkersRef.current = [];
+    const newTourStops = stops.map(s => ({ id: Date.now().toString() + s + Math.random(), name: s }));
+    setTourStops(newTourStops);
+    newTourStops.forEach(stop => addMapMarkerCityTour(stop.name, stop.id));
     toast({ title: "Preset Tour Loaded", description: `${stops.length} stops added to your tour.` });
   };
   
-
   const handleClearList = () => {
     setTourStops([]);
-    markersRef.current.forEach(marker => marker.remove());
-    markersRef.current = [];
-    toast({ title: "Tour Cleared", description: "All stops have been removed." });
+    cityTourMarkersRef.current.forEach(marker => marker.remove());
+    cityTourMarkersRef.current = [];
+    if (cabRoutePolylineRef.current) {
+        cabRoutePolylineRef.current.remove();
+        cabRoutePolylineRef.current = null;
+    }
+    if(pickupMarkerRefCab.current) pickupMarkerRefCab.current.remove();
+    if(dropoffMarkerRefCab.current) dropoffMarkerRefCab.current.remove();
+    setPickupCoordsCab(null);
+    setDropoffCoordsCab(null);
+    toast({ title: "Map and Lists Cleared", description: "All stops and routes have been removed." });
   };
 
   const handleDownloadList = () => {
@@ -262,10 +315,11 @@ export default function CabAndTourPage() {
         try {
           const uploadedStopNames = JSON.parse(e.target?.result as string);
           if (Array.isArray(uploadedStopNames) && uploadedStopNames.every(s => typeof s === 'string')) {
-            markersRef.current.forEach(marker => marker.remove());
-            markersRef.current = [];
-            setTourStops(uploadedStopNames.map(name => ({ id: Date.now().toString() + name + Math.random(), name })));
-            uploadedStopNames.forEach(name => addMapMarkerCityTour(name));
+            cityTourMarkersRef.current.forEach(marker => marker.remove());
+            cityTourMarkersRef.current = [];
+            const newTourStops = uploadedStopNames.map(name => ({ id: Date.now().toString() + name + Math.random(), name }));
+            setTourStops(newTourStops);
+            newTourStops.forEach(stop => addMapMarkerCityTour(stop.name, stop.id));
             toast({ title: "Tour Uploaded", description: "Tour stops have been loaded from file." });
           } else {
             throw new Error("Invalid file format. Expected an array of strings.");
@@ -282,7 +336,7 @@ export default function CabAndTourPage() {
   
   const handleCabBookingSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true); // Use general loading for cab submit as well
+    setIsLoading(true);
     if (!pickupLocation || !dropoffLocation || !bookingDateTime) {
       toast({ title: "Missing Information", description: "Please fill all cab booking fields.", variant: "destructive" });
       setIsLoading(false);
@@ -335,19 +389,19 @@ export default function CabAndTourPage() {
   };
 
   const presetTours = {
-    "City Tour 1": ['India Gate, Delhi', 'Red Fort, Delhi', 'Qutub Minar, Delhi'],
-    "City Tour 2": ['Gateway of India, Mumbai', 'Marine Drive, Mumbai', 'Elephanta Caves, Mumbai'],
-    "City Tour 3": ['Taj Mahal, Agra', 'Agra Fort, Agra', 'Fatehpur Sikri, Agra'],
+    "Delhi Darshan": ['India Gate, Delhi', 'Red Fort, Delhi', 'Qutub Minar, Delhi'],
+    "Mumbai Magic": ['Gateway of India, Mumbai', 'Marine Drive, Mumbai', 'Elephanta Caves, Mumbai'],
+    "Agra Wonders": ['Taj Mahal, Agra', 'Agra Fort, Agra', 'Fatehpur Sikri, Agra'],
   };
-
 
   return (
     <>
       <Script
-        src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"
+        src={`https://apis.mapmyindia.com/advancedmaps/v1/${MAP_MY_INDIA_API_KEY}/map_sdk.js`}
         strategy="afterInteractive"
         onLoad={() => {
-          // console.log('Mapbox GL JS script loaded.');
+          // console.log('MapmyIndia SDK script loaded.');
+          // Ensure map init logic runs after SDK is loaded, handled by useEffect dependency on window.mappls
         }}
       />
       <nav className="p-4 container mx-auto">
@@ -411,13 +465,12 @@ export default function CabAndTourPage() {
                         id="tourStop"
                         value={tourStopInput}
                         onChange={(e) => setTourStopInput(e.target.value)}
-                        placeholder="Enter tour stop (e.g., Eiffel Tower)"
+                        placeholder="Enter tour stop (e.g., India Gate)"
                         className="flex-grow"
                       />
                       <Button variant="outline" onClick={handleAddStop} className="rounded-full">Add Stop</Button>
                     </div>
                     
-
                     <h6 className="mt-4 font-medium">Your Tour Stops:</h6>
                     {tourStops.length === 0 ? (
                       <p className="text-muted-foreground text-sm py-2">No stops added yet.</p>
@@ -432,7 +485,6 @@ export default function CabAndTourPage() {
                       </ul>
                     )}
                     
-
                     <div className="flex justify-between gap-2 mt-4">
                       <Button variant="outline" onClick={handleUploadClick} className="flex-1 rounded-full min-w-0">
                         <UploadCloud className="mr-2 h-4 w-4" /> Upload
@@ -442,7 +494,7 @@ export default function CabAndTourPage() {
                         <DownloadCloud className="mr-2 h-4 w-4" /> Download
                       </Button>
                       <Button variant="destructive" onClick={handleClearList} className="flex-1 rounded-full min-w-0">
-                        <Trash2 className="mr-2 h-4 w-4" /> Clear
+                        <Trash2 className="mr-2 h-4 w-4" /> Clear All
                       </Button>
                     </div>
                     <Button onClick={handlePayAndBookTour} className="w-full mt-3 rounded-full bg-primary text-primary-foreground" disabled={isLoading}>
@@ -520,8 +572,7 @@ export default function CabAndTourPage() {
             <Card className="p-1 md:p-2 shadow-lg h-[520px] md:h-auto">
               <CardContent className="p-0 h-full">
                 <div ref={mapContainerRef} className="w-full h-full rounded-md min-h-[500px] bg-muted flex items-center justify-center">
-                  {/* Display this message if mapboxgl is not yet loaded */}
-                  {typeof window !== 'undefined' && !window.mapboxgl && <p className="text-muted-foreground">Initializing map...</p>}
+                  {typeof window !== 'undefined' && !window.mappls && <p className="text-muted-foreground">Initializing map...</p>}
                 </div>
               </CardContent>
             </Card>
@@ -531,5 +582,3 @@ export default function CabAndTourPage() {
     </>
   );
 }
-
-    
