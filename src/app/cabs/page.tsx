@@ -8,7 +8,7 @@ import Script from 'next/script';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'; // CardDescription removed as not used
+import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { UploadCloud, DownloadCloud, Trash2, Route, MapPin, Building, Navigation, Edit3, Loader2 } from 'lucide-react';
@@ -44,7 +44,7 @@ interface MapplsAutosuggestResult {
 }
 
 
-const MAP_MY_INDIA_API_KEY = 'b8558b6a01dd83cc4de527d1a5948af8';
+const MAP_MY_INDIA_API_KEY = 'b8558b6a01dd83cc4de527d1a5948af8'; // Replace with your actual key or use env var
 
 // Polyline decoding function (standard algorithm)
 function decodeMMIPolyline(encoded: string): MapplsLatLng[] {
@@ -577,7 +577,7 @@ export default function CabAndTourPage() {
 
       {(isLoading || isCabRouteLoading || isPickupSuggestionsLoading || isDropoffSuggestionsLoading || isCity1LoadingSuggestions || isCity2LoadingSuggestions || isCity3LoadingSuggestions || isTourStopSuggestionsLoading) && (
         <div className="fixed inset-0 bg-black/50 flex flex-col items-center justify-center z-[1000]">
-          <div className="w-16 h-16 border-8 border-muted border-t-primary rounded-full animate-spin" />
+          <Loader2 className="h-16 w-16 text-primary animate-spin" />
           <div className="text-white mt-4 text-lg">Loading, please wait...</div>
         </div>
       )}
