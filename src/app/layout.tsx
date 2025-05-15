@@ -14,26 +14,26 @@ const roboto = Roboto({
 });
 
 export const metadata: Metadata = {
-  title: 'TravelEase - Your Journey Begins Here',
-  description: 'Book flights, hotels, trains, and more with TravelEase. Your journey begins here!',
+  title: 'My Apps - Your Journey Begins Here',
+  description: 'Book flights, hotels, trains, and more with My Apps. Your journey begins here!',
   keywords: 'travel, flights, hotels, trains, booking, vacation, deals',
   openGraph: {
-    title: 'TravelEase - Your Journey Begins Here',
-    description: 'Book flights, hotels, trains, and more with TravelEase. Your journey begins here!',
+    title: 'My Apps - Your Journey Begins Here',
+    description: 'Book flights, hotels, trains, and more with My Apps. Your journey begins here!',
     images: [
       {
         url: 'https://placehold.co/1200x630.png', 
         width: 1200,
         height: 630,
-        alt: 'TravelEase Social Image',
+        alt: 'My Apps Social Image',
       },
     ],
     type: 'website',
   },
   twitter: { 
     card: 'summary_large_image',
-    title: 'TravelEase - Your Journey Begins Here',
-    description: 'Book flights, hotels, trains, and more with TravelEase. Your journey begins here!',
+    title: 'My Apps - Your Journey Begins Here',
+    description: 'Book flights, hotels, trains, and more with My Apps. Your journey begins here!',
     images: ['https://placehold.co/1200x630.png'], 
   }
 };
