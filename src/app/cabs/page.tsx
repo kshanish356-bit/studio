@@ -10,11 +10,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation'; // Added useRouter
+import { useRouter } from 'next/navigation'; 
+import { Route } from 'lucide-react'; // Added Route for icon
 
 export default function CabBookingPage() {
   const { toast } = useToast();
-  const router = useRouter(); // Initialized useRouter
+  const router = useRouter(); 
   const [activeTab, setActiveTab] = useState<'cab' | 'tour'>('cab');
   const [pickupLocation, setPickupLocation] = useState('');
   const [dropoffLocation, setDropoffLocation] = useState('');
@@ -26,7 +27,7 @@ export default function CabBookingPage() {
   const [feedback, setFeedback] = useState('');
   const [savedRides, setSavedRides] = useState<string[]>(['Sample Ride 1: Home to Work', 'Sample Ride 2: Airport to Hotel']);
   const [newRide, setNewRide] = useState('');
-  const [isLoading, setIsLoading] = useState(false); // For spinner
+  const [isLoading, setIsLoading] = useState(false); 
 
   useEffect(() => {
     if (typeof window !== 'undefined' && (window as any).mapboxgl) {
@@ -42,7 +43,7 @@ export default function CabBookingPage() {
     toast({ title: "Booking Submitted", description: `Booking from ${pickupLocation} to ${dropoffLocation}. Proceeding to payment.` });
     setTimeout(() => {
       setIsLoading(false);
-      router.push('/payment'); // Navigate to payment page
+      router.push('/payment'); 
     }, 1500); 
   };
 
@@ -70,6 +71,26 @@ export default function CabBookingPage() {
   
   const toggleDarkMode = () => {
     toast({ title: "Theme Toggle", description: "Dark mode toggle functionality would be implemented here." });
+  };
+
+  const handleMultiCitySubmit = () => {
+    if (!city1.trim() || !city2.trim()) {
+      toast({
+        title: 'Missing Information',
+        description: 'Please enter both City 1 and City 2 for multi-city booking.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setIsLoading(true);
+    toast({
+      title: 'Multi-City Search Submitted',
+      description: `Searching for routes: ${city1} to ${city2}. Proceeding to payment.`,
+    });
+    setTimeout(() => {
+      setIsLoading(false);
+      router.push('/payment');
+    }, 1500);
   };
 
   return (
@@ -174,6 +195,9 @@ export default function CabBookingPage() {
                 <Label htmlFor="city2">City 2:</Label>
                 <Input type="text" id="city2" name="city2" placeholder="Enter second city" value={city2} onChange={(e) => setCity2(e.target.value)} />
               </div>
+              <Button onClick={handleMultiCitySubmit} className="mt-4 w-full">
+                <Route className="mr-2 h-4 w-4" /> Search Multi-City & Proceed to Pay
+              </Button>
             </div>
           </section>
 
