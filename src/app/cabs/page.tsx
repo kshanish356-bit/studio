@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { UploadCloud, DownloadCloud, Trash2, Route, MapPin, Building, Navigation, Edit3 } from 'lucide-react'; // Added more icons
+import { UploadCloud, DownloadCloud, Trash2, Route, MapPin, Building, Navigation, Edit3, Loader2 } from 'lucide-react'; // Added Loader2
 
 // Declare mapboxgl
 declare global {
@@ -67,6 +67,10 @@ export default function CabAndTourPage() {
       });
       mapInstanceRef.current = map;
 
+      map.on('load', () => {
+        console.log("Map loaded successfully.");
+      });
+
       return () => {
         map.remove();
         mapInstanceRef.current = null;
@@ -109,13 +113,14 @@ export default function CabAndTourPage() {
     }
   };
 
-  const handleLoadPresetTour = (stops: string[]) => {
+  const loadPresetTour = (stops: string[]) => {
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current = [];
-    setTourStops(stops.map(s => ({ id: Date.now().toString() + s, name: s }))); // Ensure unique IDs for keys
+    setTourStops(stops.map(s => ({ id: Date.now().toString() + s + Math.random(), name: s })));
     stops.forEach(stop => addMapMarker(stop));
     toast({ title: "Preset Tour Loaded", description: `${stops.length} stops added to your tour.` });
   };
+  
 
   const handleClearList = () => {
     setTourStops([]);
@@ -155,7 +160,7 @@ export default function CabAndTourPage() {
           if (Array.isArray(uploadedStopNames) && uploadedStopNames.every(s => typeof s === 'string')) {
             markersRef.current.forEach(marker => marker.remove());
             markersRef.current = [];
-            setTourStops(uploadedStopNames.map(name => ({ id: Date.now().toString() + name, name })));
+            setTourStops(uploadedStopNames.map(name => ({ id: Date.now().toString() + name + Math.random(), name })));
             uploadedStopNames.forEach(name => addMapMarker(name));
             toast({ title: "Tour Uploaded", description: "Tour stops have been loaded from file." });
           } else {
@@ -186,8 +191,9 @@ export default function CabAndTourPage() {
     }, 1500);
   };
 
-  const handleMultiCitySubmit = () => {
-    if (!city1 || !city2) { // City3 is optional based on original HTML structure
+  const handleMultiCitySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!city1 || !city2) { 
       toast({
         title: 'Missing Information',
         description: 'Please enter at least City 1 and City 2 for multi-city booking.',
@@ -229,7 +235,6 @@ export default function CabAndTourPage() {
         strategy="afterInteractive"
         onLoad={() => {
           console.log('Mapbox GL JS script loaded.');
-          // Initialization is handled in useEffect
         }}
       />
       <nav className="p-4 container mx-auto">
@@ -248,7 +253,7 @@ export default function CabAndTourPage() {
       <div className="container mx-auto mt-4 px-4">
         <div className="flex flex-col md:flex-row gap-8">
           {/* Left Panel */}
-          <div className="w-full md:w-1/2">
+          <div className="w-full md:w-1/3"> {/* Adjusted width for left panel */}
             <Card className="p-4 shadow-lg">
               <CardContent className="p-2 md:p-4">
                 <div className="flex space-x-2 mb-4">
@@ -281,7 +286,7 @@ export default function CabAndTourPage() {
                     <p className="font-medium">Select a Preset City Tour:</p>
                     <div className="mb-3 space-x-2">
                       {Object.entries(presetTours).map(([name, stops]) => (
-                        <Button key={name} variant="outline" size="sm" onClick={() => handleLoadPresetTour(stops)}>
+                        <Button key={name} variant="outline" size="sm" onClick={() => loadPresetTour(stops)}>
                           {name}
                         </Button>
                       ))}
@@ -350,7 +355,7 @@ export default function CabAndTourPage() {
                         <Input id="bookingDateTime" type="datetime-local" value={bookingDateTime} onChange={e => setBookingDateTime(e.target.value)} required />
                       </div>
                       <Button type="submit" className="w-full rounded-full bg-accent text-accent-foreground" disabled={isLoading}>
-                        {isLoading ? <Trash2 className="mr-2 h-4 w-4 animate-spin" /> : null} Book Now & Proceed to Pay
+                        {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Book Now & Proceed to Pay
                       </Button>
                     </form>
                   </div>
@@ -359,24 +364,24 @@ export default function CabAndTourPage() {
                 {activeTab === 'multiCity' && (
                   <div id="multiCitySection">
                     <h4 className="text-lg font-semibold mb-3 flex items-center"><Route className="mr-2 h-5 w-5 text-primary"/> Multi-City Tour</h4>
-                    <div className="space-y-3">
+                    <form onSubmit={handleMultiCitySubmit} className="space-y-3">
                       <div>
                         <Label htmlFor="multiCity1">City 1</Label>
-                        <Input id="multiCity1" value={city1} onChange={e => setCity1(e.target.value)} placeholder="Enter first city" />
+                        <Input id="multiCity1" value={city1} onChange={e => setCity1(e.target.value)} placeholder="Enter first city" required />
                       </div>
                       <div>
                         <Label htmlFor="multiCity2">City 2</Label>
-                        <Input id="multiCity2" value={city2} onChange={e => setCity2(e.target.value)} placeholder="Enter second city" />
+                        <Input id="multiCity2" value={city2} onChange={e => setCity2(e.target.value)} placeholder="Enter second city" required />
                       </div>
                       <div>
                         <Label htmlFor="multiCity3">City 3 (Optional)</Label>
                         <Input id="multiCity3" value={city3} onChange={e => setCity3(e.target.value)} placeholder="Enter third city" />
                       </div>
-                      <Button onClick={handleMultiCitySubmit} className="w-full rounded-full bg-info text-info-foreground" disabled={isLoading}>
-                         {isLoading ? <Trash2 className="mr-2 h-4 w-4 animate-spin" /> : <Route className="mr-2 h-4 w-4" />}
-                         Plan Multi-City & Proceed to Pay
+                      <Button type="submit" className="w-full rounded-full bg-primary text-primary-foreground" disabled={isLoading}> {/* Changed color to primary */}
+                         {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Route className="mr-2 h-4 w-4" />}
+                         Search Multi-City & Proceed to Pay
                       </Button>
-                    </div>
+                    </form>
                   </div>
                 )}
               </CardContent>
@@ -384,7 +389,7 @@ export default function CabAndTourPage() {
           </div>
 
           {/* Right Panel - Map */}
-          <div className="w-full md:w-1/2">
+          <div className="w-full md:w-2/3"> {/* Adjusted width for right panel (map) */}
             <Card className="p-1 md:p-2 shadow-lg h-[520px] md:h-auto">
               <CardContent className="p-0 h-full">
                 <div ref={mapContainerRef} className="w-full h-full rounded-md min-h-[500px] bg-muted flex items-center justify-center">
@@ -401,5 +406,3 @@ export default function CabAndTourPage() {
     </>
   );
 }
-
-    
