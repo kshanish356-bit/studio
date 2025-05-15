@@ -8,7 +8,7 @@ import Script from 'next/script';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'; // CardDescription removed as not used
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { UploadCloud, DownloadCloud, Trash2, Route, MapPin, Building, Navigation, Edit3, Loader2 } from 'lucide-react';
@@ -41,11 +41,10 @@ interface MapplsAutosuggestResult {
   orderIndex: number;
   alternateName: string;
   keywords: string[];
-  // Add other fields as needed based on the API response
 }
 
 
-const MAP_MY_INDIA_API_KEY = 'b8558b6a01dd83cc4de527d1a5948af8'; // Extracted from the script URL
+const MAP_MY_INDIA_API_KEY = 'b8558b6a01dd83cc4de527d1a5948af8';
 
 // Polyline decoding function (standard algorithm)
 function decodeMMIPolyline(encoded: string): MapplsLatLng[] {
@@ -88,6 +87,11 @@ export default function CabAndTourPage() {
   // City Tour State
   const [tourStopInput, setTourStopInput] = useState('');
   const [tourStops, setTourStops] = useState<TourStop[]>([]);
+  const [tourStopSuggestions, setTourStopSuggestions] = useState<MapplsAutosuggestResult[]>([]);
+  const [isTourStopSuggestionsLoading, setIsTourStopSuggestionsLoading] = useState(false);
+  const [showTourStopSuggestions, setShowTourStopSuggestions] = useState(false);
+  const tourStopDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
 
   // Cab Booking State
   const [pickupLocation, setPickupLocation] = useState('');
@@ -231,7 +235,7 @@ export default function CabAndTourPage() {
           position: coordinates,
           title: address,
           icon_options: {
-             iconUrl: `https://maps.mapmyindia.com/images/${type === 'pickup' ? 'pickup_Marker' : 'drop_Marker'}.png`, // Example marker icons
+             iconUrl: `https://maps.mapmyindia.com/images/${type === 'pickup' ? 'pickup_Marker' : 'drop_Marker'}.png`,
              iconHeight: 40,
              iconWidth: 30,
           }
@@ -317,7 +321,6 @@ export default function CabAndTourPage() {
     if (pickupCoordsCab && dropoffCoordsCab) {
       fetchAndDrawCabRoute(pickupCoordsCab, dropoffCoordsCab);
     } else {
-      // If one of them becomes null, remove the route
       if (cabRoutePolylineRef.current) {
         cabRoutePolylineRef.current.remove();
         cabRoutePolylineRef.current = null;
@@ -331,7 +334,8 @@ export default function CabAndTourPage() {
     setSuggestionsState: React.Dispatch<React.SetStateAction<MapplsAutosuggestResult[]>>,
     setIsLoadingState: React.Dispatch<React.SetStateAction<boolean>>,
     setShowSuggestionsState: React.Dispatch<React.SetStateAction<boolean>>,
-    debounceTimerRef: React.MutableRefObject<NodeJS.Timeout | null>
+    debounceTimerRef: React.MutableRefObject<NodeJS.Timeout | null>,
+    apiFilterParameter?: string
   ) => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
@@ -345,11 +349,12 @@ export default function CabAndTourPage() {
     }
 
     setIsLoadingState(true);
-    setShowSuggestionsState(true); // Show loading/suggestions panel
+    setShowSuggestionsState(true); 
 
     debounceTimerRef.current = setTimeout(async () => {
       try {
-        const autosuggestURL = `https://atlas.mapmyindia.com/api/places/autosuggest?query=${encodeURIComponent(inputValue)}&key=${MAP_MY_INDIA_API_KEY}&filter=type:city`; // Filter for city type initially
+        const filterQuery = apiFilterParameter ? `&filter=type:${apiFilterParameter}` : '';
+        const autosuggestURL = `https://atlas.mapmyindia.com/api/places/autosuggest?query=${encodeURIComponent(inputValue)}&key=${MAP_MY_INDIA_API_KEY}&bridge=true${filterQuery}`;
         const response = await fetch(autosuggestURL);
         if (!response.ok) {
           const errorText = await response.text();
@@ -367,7 +372,7 @@ export default function CabAndTourPage() {
       } finally {
         setIsLoadingState(false);
       }
-    }, 500); // 500ms debounce
+    }, 300); 
   }, [toast]);
 
 
@@ -375,14 +380,12 @@ export default function CabAndTourPage() {
     suggestion: MapplsAutosuggestResult,
     setLocationState: React.Dispatch<React.SetStateAction<string>>,
     setShowSuggestionsState: React.Dispatch<React.SetStateAction<boolean>>,
-    setCoordsState?: React.Dispatch<React.SetStateAction<MapplsLatLng | null>>, // Optional for cab booking
-    geocodeType?: 'pickup' | 'dropoff' // Optional for cab booking
+    setCoordsState?: React.Dispatch<React.SetStateAction<MapplsLatLng | null>>, 
+    geocodeType?: 'pickup' | 'dropoff' 
   ) => {
     setLocationState(suggestion.placeName || suggestion.placeAddress);
     setShowSuggestionsState(false);
     if (setCoordsState && geocodeType) {
-      // For cab booking, directly geocode the selected eLoc for precision
-      // Or use the placeName/placeAddress if eLoc geocoding is not robust enough
       geocodeAndSetMarkerCab(suggestion.placeAddress || suggestion.placeName, geocodeType);
     }
   }, [geocodeAndSetMarkerCab]);
@@ -396,6 +399,7 @@ export default function CabAndTourPage() {
       setTourStops(prevStops => [...prevStops, { id: newStopId, name: stopName }]);
       addMapMarkerCityTour(stopName, newStopId);
       setTourStopInput('');
+      setShowTourStopSuggestions(false); // Hide suggestions after adding
     } else {
       toast({ title: "Invalid Stop", description: "Please enter a valid tour stop.", variant: "destructive" });
     }
@@ -485,7 +489,7 @@ export default function CabAndTourPage() {
   
   const handleCabBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true); // Use general isLoading for submit button
+    setIsLoading(true); 
 
     if (!pickupLocation || !dropoffLocation || !bookingDateTime) {
       toast({ title: "Missing Information", description: "Please fill all cab booking fields.", variant: "destructive" });
@@ -571,7 +575,7 @@ export default function CabAndTourPage() {
         </Link>
       </nav>
 
-      {(isLoading || isCabRouteLoading || isPickupSuggestionsLoading || isDropoffSuggestionsLoading || isCity1LoadingSuggestions || isCity2LoadingSuggestions || isCity3LoadingSuggestions) && (
+      {(isLoading || isCabRouteLoading || isPickupSuggestionsLoading || isDropoffSuggestionsLoading || isCity1LoadingSuggestions || isCity2LoadingSuggestions || isCity3LoadingSuggestions || isTourStopSuggestionsLoading) && (
         <div className="fixed inset-0 bg-black/50 flex flex-col items-center justify-center z-[1000]">
           <div className="w-16 h-16 border-8 border-muted border-t-primary rounded-full animate-spin" />
           <div className="text-white mt-4 text-lg">Loading, please wait...</div>
@@ -621,15 +625,37 @@ export default function CabAndTourPage() {
                     </div>
 
                     <h5 className="mt-4 text-lg font-medium">Create Your Tour</h5>
-                    <div className="flex gap-2 mb-2">
-                      <Input
-                        id="tourStop"
-                        value={tourStopInput}
-                        onChange={(e) => setTourStopInput(e.target.value)}
-                        placeholder="Enter tour stop (e.g., India Gate)"
-                        className="flex-grow"
-                      />
-                      <Button variant="outline" onClick={handleAddStop} className="rounded-full">Add Stop</Button>
+                    <div className="relative mb-2">
+                       <div className="flex items-center gap-2">
+                          <Input
+                            id="tourStop"
+                            value={tourStopInput}
+                            onChange={e => {
+                                setTourStopInput(e.target.value);
+                                handleInputChangeAndFetchSuggestions(e.target.value, setTourStopSuggestions, setIsTourStopSuggestionsLoading, setShowTourStopSuggestions, tourStopDebounceTimerRef);
+                            }}
+                            onFocus={() => tourStopInput && tourStopSuggestions.length > 0 && setShowTourStopSuggestions(true)}
+                            onBlur={() => setTimeout(() => setShowTourStopSuggestions(false), 200)}
+                            placeholder="Enter tour stop (e.g., India Gate)"
+                            className="flex-grow"
+                          />
+                          {isTourStopSuggestionsLoading && <Loader2 className="h-5 w-5 animate-spin" />}
+                          <Button variant="outline" onClick={handleAddStop} className="rounded-full">Add Stop</Button>
+                       </div>
+                        {showTourStopSuggestions && tourStopSuggestions.length > 0 && (
+                          <ul className="absolute z-10 w-full bg-card border border-border rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
+                            {tourStopSuggestions.map((suggestion, index) => (
+                              <li 
+                                key={suggestion.eLoc || `${suggestion.placeName}-${index}`}
+                                className="p-2 hover:bg-accent cursor-pointer"
+                                onMouseDown={() => handleSuggestionClick(suggestion, setTourStopInput, setShowTourStopSuggestions)}
+                              >
+                                <p className="font-medium">{suggestion.placeName}</p>
+                                <p className="text-sm text-muted-foreground">{suggestion.placeAddress}</p>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
                     </div>
                     
                     <h6 className="mt-4 font-medium">Your Tour Stops:</h6>
@@ -681,7 +707,7 @@ export default function CabAndTourPage() {
                             }}
                             onFocus={() => pickupLocation && pickupSuggestions.length > 0 && setShowPickupSuggestions(true)}
                             onBlur={() => {
-                                setTimeout(() => setShowPickupSuggestions(false), 200); // Delay to allow click on suggestion
+                                setTimeout(() => setShowPickupSuggestions(false), 200); 
                                 if (pickupLocation.trim() && !pickupCoordsCab) geocodeAndSetMarkerCab(pickupLocation, 'pickup');
                             }}
                             placeholder="Enter pickup location" 
@@ -692,9 +718,9 @@ export default function CabAndTourPage() {
                         </div>
                         {showPickupSuggestions && pickupSuggestions.length > 0 && (
                           <ul className="absolute z-10 w-full bg-card border border-border rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
-                            {pickupSuggestions.map(suggestion => (
+                            {pickupSuggestions.map((suggestion, index) => (
                               <li 
-                                key={suggestion.eLoc} 
+                                key={suggestion.eLoc || `${suggestion.placeName}-${index}`}
                                 className="p-2 hover:bg-accent cursor-pointer"
                                 onMouseDown={() => handleSuggestionClick(suggestion, setPickupLocation, setShowPickupSuggestions, setPickupCoordsCab, 'pickup')}
                               >
@@ -729,9 +755,9 @@ export default function CabAndTourPage() {
                         </div>
                         {showDropoffSuggestions && dropoffSuggestions.length > 0 && (
                           <ul className="absolute z-10 w-full bg-card border border-border rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
-                            {dropoffSuggestions.map(suggestion => (
+                            {dropoffSuggestions.map((suggestion, index) => (
                               <li 
-                                key={suggestion.eLoc} 
+                                key={suggestion.eLoc || `${suggestion.placeName}-${index}`}
                                 className="p-2 hover:bg-accent cursor-pointer"
                                 onMouseDown={() => handleSuggestionClick(suggestion, setDropoffLocation, setShowDropoffSuggestions, setDropoffCoordsCab, 'dropoff')}
                               >
@@ -746,8 +772,8 @@ export default function CabAndTourPage() {
                         <Label htmlFor="bookingDateTime">Date & Time</Label>
                         <Input id="bookingDateTime" type="datetime-local" value={bookingDateTime} onChange={e => setBookingDateTime(e.target.value)} required />
                       </div>
-                      <Button type="submit" className="w-full rounded-full bg-accent text-accent-foreground" disabled={isLoading && activeTab === 'cab' || isCabRouteLoading}>
-                        {(isLoading && activeTab === 'cab' || isCabRouteLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Book Now & Proceed to Pay
+                      <Button type="submit" className="w-full rounded-full bg-accent text-accent-foreground" disabled={(isLoading && activeTab === 'cab') || isCabRouteLoading}>
+                        {((isLoading && activeTab === 'cab') || isCabRouteLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Book Now & Proceed to Pay
                       </Button>
                     </form>
                   </div>
@@ -765,7 +791,7 @@ export default function CabAndTourPage() {
                             value={city1} 
                             onChange={e => {
                                 setCity1(e.target.value);
-                                handleInputChangeAndFetchSuggestions(e.target.value, setCity1Suggestions, setIsCity1LoadingSuggestions, setShowCity1Suggestions, city1DebounceTimerRef);
+                                handleInputChangeAndFetchSuggestions(e.target.value, setCity1Suggestions, setIsCity1LoadingSuggestions, setShowCity1Suggestions, city1DebounceTimerRef, 'city');
                             }}
                             onFocus={() => city1 && city1Suggestions.length > 0 && setShowCity1Suggestions(true)}
                             onBlur={() => setTimeout(() => setShowCity1Suggestions(false), 200)}
@@ -777,9 +803,9 @@ export default function CabAndTourPage() {
                         </div>
                         {showCity1Suggestions && city1Suggestions.length > 0 && (
                           <ul className="absolute z-10 w-full bg-card border border-border rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
-                            {city1Suggestions.map(suggestion => (
+                            {city1Suggestions.map((suggestion, index) => (
                               <li 
-                                key={suggestion.eLoc} 
+                                key={suggestion.eLoc || `${suggestion.placeName}-${index}`}
                                 className="p-2 hover:bg-accent cursor-pointer"
                                 onMouseDown={() => handleSuggestionClick(suggestion, setCity1, setShowCity1Suggestions)}
                               >
@@ -798,7 +824,7 @@ export default function CabAndTourPage() {
                                 value={city2} 
                                 onChange={e => {
                                     setCity2(e.target.value);
-                                    handleInputChangeAndFetchSuggestions(e.target.value, setCity2Suggestions, setIsCity2LoadingSuggestions, setShowCity2Suggestions, city2DebounceTimerRef);
+                                    handleInputChangeAndFetchSuggestions(e.target.value, setCity2Suggestions, setIsCity2LoadingSuggestions, setShowCity2Suggestions, city2DebounceTimerRef, 'city');
                                 }}
                                 onFocus={() => city2 && city2Suggestions.length > 0 && setShowCity2Suggestions(true)}
                                 onBlur={() => setTimeout(() => setShowCity2Suggestions(false), 200)}
@@ -810,9 +836,9 @@ export default function CabAndTourPage() {
                         </div>
                         {showCity2Suggestions && city2Suggestions.length > 0 && (
                           <ul className="absolute z-10 w-full bg-card border border-border rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
-                            {city2Suggestions.map(suggestion => (
+                            {city2Suggestions.map((suggestion, index) => (
                               <li 
-                                key={suggestion.eLoc} 
+                                key={suggestion.eLoc || `${suggestion.placeName}-${index}`}
                                 className="p-2 hover:bg-accent cursor-pointer"
                                 onMouseDown={() => handleSuggestionClick(suggestion, setCity2, setShowCity2Suggestions)}
                               >
@@ -831,7 +857,7 @@ export default function CabAndTourPage() {
                                 value={city3} 
                                 onChange={e => {
                                     setCity3(e.target.value);
-                                    handleInputChangeAndFetchSuggestions(e.target.value, setCity3Suggestions, setIsCity3LoadingSuggestions, setShowCity3Suggestions, city3DebounceTimerRef);
+                                    handleInputChangeAndFetchSuggestions(e.target.value, setCity3Suggestions, setIsCity3LoadingSuggestions, setShowCity3Suggestions, city3DebounceTimerRef, 'city');
                                 }}
                                 onFocus={() => city3 && city3Suggestions.length > 0 && setShowCity3Suggestions(true)}
                                 onBlur={() => setTimeout(() => setShowCity3Suggestions(false), 200)}
@@ -842,9 +868,9 @@ export default function CabAndTourPage() {
                         </div>
                         {showCity3Suggestions && city3Suggestions.length > 0 && (
                           <ul className="absolute z-10 w-full bg-card border border-border rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
-                            {city3Suggestions.map(suggestion => (
+                            {city3Suggestions.map((suggestion, index) => (
                               <li 
-                                key={suggestion.eLoc} 
+                                key={suggestion.eLoc || `${suggestion.placeName}-${index}`}
                                 className="p-2 hover:bg-accent cursor-pointer"
                                 onMouseDown={() => handleSuggestionClick(suggestion, setCity3, setShowCity3Suggestions)}
                               >
@@ -881,4 +907,3 @@ export default function CabAndTourPage() {
     </>
   );
 }
-
