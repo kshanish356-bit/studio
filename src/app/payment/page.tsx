@@ -75,8 +75,13 @@ export default function PaymentPage() {
   const [selectedNetBanking, setSelectedNetBanking] = useState<string | undefined>();
   const [selectedWallet, setSelectedWallet] = useState<string | undefined>();
   const [selectedCBDC, setSelectedCBDC] = useState<string | undefined>();
+  const [currentYear, setCurrentYear] = useState<number | null>(null);
 
   const { toast } = useToast();
+
+  useEffect(() => {
+    setCurrentYear(new Date().getFullYear());
+  }, []);
 
   const sidebarLinks = [
     { id: 'quikPay', label: 'QuikPay', icon: ShieldCheck, target: 'quikPay' as PaymentSection },
@@ -304,9 +309,6 @@ export default function PaymentPage() {
             )}
           </main>
         </div>
-        <footer className="bg-muted py-8 text-center text-muted-foreground mt-12">
-            &copy; {new Date().getFullYear()} TravelEase Simplified. All rights reserved.
-        </footer>
       </div>
     </>
   );

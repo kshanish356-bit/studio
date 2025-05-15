@@ -6,6 +6,7 @@ import { Facebook, Twitter, Instagram, Linkedin, Mail, Phone, MapPin } from 'luc
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { useState, useEffect } from 'react';
 
 // Placeholder SVG icons for payment methods
 const VisaIcon = () => <svg viewBox="0 0 75 26" fill="none" className="h-6 w-auto" xmlns="http://www.w3.org/2000/svg"><path d="M32.6211 0.542969L26.2432 24.959H20.6211L27.0049 0.542969H32.6211ZM53.1611 12.751C53.1611 15.5635 55.0352 16.8887 56.7119 17.7627C58.3945 18.6367 59.0596 19.2031 59.0596 20.1211C59.0596 21.458 57.6162 22.1816 56.0186 22.1816C53.501 22.1816 52.3164 21.5039 51.2607 20.9375L50.4287 24.2607C51.542 24.7344 53.4277 25.0039 55.5605 25.0039C59.9443 25.0039 62.8506 22.8887 62.8506 19.5537C62.8506 15.4805 57.7744 14.9258 57.7744 13.668C57.7744 12.9561 58.4277 12.291 59.6572 12.2207C60.1895 12.1875 61.9014 12.1875 63.251 13.0615L64.0771 9.9209C62.8887 9.39844 61.3242 9.04297 59.5401 9.04297C55.5322 9.04297 53.1611 10.9502 53.1611 12.751ZM73.0771 0.542969L69.7539 17.1475L68.4834 10.3057C68.1182 8.40918 67.6504 6.71094 65.2852 6.71094C63.5596 6.71094 61.7119 8.1123 61.0352 9.31543L56.0186 24.959H50.3965L55.3135 0.542969H60.6084L62.2275 12.3828L66.5049 0.542969H73.0771ZM19.6475 10.0811C19.0811 7.60742 16.7646 6.51855 14.9688 6.51855C12.3428 6.51855 9.8252 8.46777 9.8252 12.1543C9.8252 15.2148 11.8486 16.6045 13.8721 17.5586C15.8955 18.5127 17.2109 19.2031 17.2109 20.374C17.2109 21.7227 15.7256 22.4023 13.9961 22.4023C11.2393 22.4023 9.73633 21.208 9.73633 21.208L8.5293 24.3203C8.5293 24.3203 10.3896 25.0039 13.415 25.0039C18.8057 25.0039 21.0049 22.4023 21.0049 19.9102C21.0049 15.1309 15.0752 14.7656 15.0752 13.5703C15.0752 13.0967 15.543 12.4609 16.6045 12.2207C16.8584 12.1875 17.1416 12.1651 17.4307 12.1651C19.2305 12.1651 20.1289 12.9443 20.3828 13.3623L21.5547 10.0811H19.6475ZM7.47363 24.959L12.0791 0.542969H6.44531L1.83984 24.959H7.47363Z" fill="#1A1F71"/></svg>;
@@ -36,6 +37,11 @@ const footerLinks = {
 
 export default function AppFooter() {
   const { toast } = useToast();
+  const [currentYear, setCurrentYear] = useState<number | null>(null);
+
+  useEffect(() => {
+    setCurrentYear(new Date().getFullYear());
+  }, []);
 
   const handleNewsletterSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -134,7 +140,11 @@ export default function AppFooter() {
       </div>
       <div className="bg-muted py-6">
         <div className="container mx-auto flex flex-col sm:flex-row justify-between items-center text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} TravelEase. All rights reserved.</p>
+          {currentYear !== null ? (
+            <p>&copy; {currentYear} TravelEase. All rights reserved.</p>
+          ) : (
+            <p>&copy; TravelEase. All rights reserved.</p> 
+          )}
           <div className="flex space-x-3 mt-4 sm:mt-0 items-center">
             <VisaIcon />
             <MastercardIcon />

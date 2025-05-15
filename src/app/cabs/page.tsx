@@ -41,17 +41,23 @@ export default function CabAndTourPage() {
   const [pickupLocation, setPickupLocation] = useState('');
   const [dropoffLocation, setDropoffLocation] = useState('');
   const [bookingDateTime, setBookingDateTime] = useState('');
+  const [pickupCoordsCab, setPickupCoordsCab] = useState<[number, number] | null>(null);
+  const [dropoffCoordsCab, setDropoffCoordsCab] = useState<[number, number] | null>(null);
+  const [isCabRouteLoading, setIsCabRouteLoading] = useState(false);
 
   // Multi-City State
   const [city1, setCity1] = useState('');
   const [city2, setCity2] = useState('');
   const [city3, setCity3] = useState('');
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // General loading state
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<any>(null); // For Mapbox map instance
-  const markersRef = useRef<any[]>([]); // For Mapbox marker instances
+  const markersRef = useRef<any[]>([]); // For Mapbox marker instances (City Tour)
+  const pickupMarkerRefCab = useRef<any>(null);
+  const dropoffMarkerRefCab = useRef<any>(null);
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const MAPBOX_ACCESS_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || 'pk.eyJ1IjoiZXhhbXBsZXVzZXIiLCJhIjoiY2wxeGJlb2F4MDE3YzJubHVmZmJoYjB4OCJ9.3p0YO7nprdfRCVzmE-Ujgg'; 
@@ -80,11 +86,11 @@ export default function CabAndTourPage() {
     }
   }, [MAPBOX_ACCESS_TOKEN]);
 
-  const addMapMarker = useCallback(async (stopName: string) => {
+  const addMapMarkerCityTour = useCallback(async (stopName: string) => {
     if (!mapInstanceRef.current || !window.mapboxgl) return;
 
     try {
-      const geocodeURL = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(stopName)}.json?access_token=${MAPBOX_ACCESS_TOKEN}`;
+      const geocodeURL = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(stopName)}.json?access_token=${MAPBOX_ACCESS_TOKEN}&country=IN`;
       const response = await fetch(geocodeURL);
       const data = await response.json();
       const coordinates = data.features[0]?.geometry.coordinates;
@@ -99,16 +105,112 @@ export default function CabAndTourPage() {
         toast({ title: "Location not found", description: `Could not find coordinates for: ${stopName}`, variant: "destructive" });
       }
     } catch (error) {
-      console.error("Error adding marker:", error);
+      console.error("Error adding city tour marker:", error);
       toast({ title: "Geocoding Error", description: `Failed to geocode: ${stopName}`, variant: "destructive" });
     }
   }, [MAPBOX_ACCESS_TOKEN, toast]);
+
+  const geocodeAndSetMarkerCab = useCallback(async (address: string, type: 'pickup' | 'dropoff') => {
+    if (!mapInstanceRef.current || !window.mapboxgl || !address.trim()) return null;
+    setIsCabRouteLoading(true);
+    try {
+      const geocodeURL = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${MAPBOX_ACCESS_TOKEN}&country=IN`;
+      const response = await fetch(geocodeURL);
+      const data = await response.json();
+      const coordinates = data.features[0]?.geometry.coordinates;
+
+      if (coordinates) {
+        const markerColor = type === 'pickup' ? '#007bff' : '#dc3545'; // Blue for pickup, Red for dropoff
+        const existingMarkerRef = type === 'pickup' ? pickupMarkerRefCab : dropoffMarkerRefCab;
+
+        if (existingMarkerRef.current) {
+          existingMarkerRef.current.remove();
+        }
+        
+        const newMarker = new window.mapboxgl.Marker({ color: markerColor })
+          .setLngLat(coordinates)
+          .setPopup(new window.mapboxgl.Popup().setText(address))
+          .addTo(mapInstanceRef.current);
+        
+        if (type === 'pickup') {
+          pickupMarkerRefCab.current = newMarker;
+          setPickupCoordsCab(coordinates);
+        } else {
+          dropoffMarkerRefCab.current = newMarker;
+          setDropoffCoordsCab(coordinates);
+        }
+        mapInstanceRef.current.flyTo({ center: coordinates, zoom: 12 });
+        return coordinates;
+      } else {
+        toast({ title: "Location not found", description: `Could not find coordinates for: ${address}`, variant: "destructive" });
+        return null;
+      }
+    } catch (error) {
+      console.error(`Error geocoding ${type} for cab:`, error);
+      toast({ title: "Geocoding Error", description: `Failed to geocode: ${address}`, variant: "destructive" });
+      return null;
+    } finally {
+       if (type === 'dropoff') setIsCabRouteLoading(false); // Only stop loading after dropoff attempted
+    }
+  }, [MAPBOX_ACCESS_TOKEN, toast]);
+
+  const fetchAndDrawCabRoute = useCallback(async (start: [number, number], end: [number, number]) => {
+    if (!mapInstanceRef.current || !window.mapboxgl) return;
+    setIsCabRouteLoading(true);
+    try {
+      const directionsURL = `https://api.mapbox.com/directions/v5/mapbox/driving/${start[0]},${start[1]};${end[0]},${end[1]}?geometries=geojson&access_token=${MAPBOX_ACCESS_TOKEN}`;
+      const response = await fetch(directionsURL);
+      const data = await response.json();
+
+      if (data.routes && data.routes.length > 0) {
+        const route = data.routes[0].geometry;
+        if (mapInstanceRef.current.getSource('cab-route')) {
+          mapInstanceRef.current.getSource('cab-route').setData(route);
+        } else {
+          mapInstanceRef.current.addSource('cab-route', {
+            type: 'geojson',
+            data: route
+          });
+          mapInstanceRef.current.addLayer({
+            id: 'cab-route-layer',
+            type: 'line',
+            source: 'cab-route',
+            layout: {
+              'line-join': 'round',
+              'line-cap': 'round'
+            },
+            paint: {
+              'line-color': '#007BFF', // Primary color
+              'line-width': 5,
+              'line-opacity': 0.8
+            }
+          });
+        }
+        const bounds = new window.mapboxgl.LngLatBounds(start, end);
+        mapInstanceRef.current.fitBounds(bounds, { padding: 50 });
+      } else {
+        toast({ title: "Route not found", description: "Could not find a route between the locations.", variant: "destructive" });
+      }
+    } catch (error) {
+      console.error("Error fetching cab route:", error);
+      toast({ title: "Routing Error", description: "Failed to fetch route.", variant: "destructive" });
+    } finally {
+      setIsCabRouteLoading(false);
+    }
+  }, [MAPBOX_ACCESS_TOKEN, toast]);
+  
+  useEffect(() => {
+    if (pickupCoordsCab && dropoffCoordsCab) {
+      fetchAndDrawCabRoute(pickupCoordsCab, dropoffCoordsCab);
+    }
+  }, [pickupCoordsCab, dropoffCoordsCab, fetchAndDrawCabRoute]);
+
 
   const handleAddStop = () => {
     const stopName = tourStopInput.trim();
     if (stopName) {
       setTourStops(prevStops => [...prevStops, { id: Date.now().toString(), name: stopName }]);
-      addMapMarker(stopName);
+      addMapMarkerCityTour(stopName);
       setTourStopInput('');
     } else {
       toast({ title: "Invalid Stop", description: "Please enter a valid tour stop.", variant: "destructive" });
@@ -119,7 +221,7 @@ export default function CabAndTourPage() {
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current = [];
     setTourStops(stops.map(s => ({ id: Date.now().toString() + s + Math.random(), name: s })));
-    stops.forEach(stop => addMapMarker(stop));
+    stops.forEach(stop => addMapMarkerCityTour(stop));
     toast({ title: "Preset Tour Loaded", description: `${stops.length} stops added to your tour.` });
   };
   
@@ -163,7 +265,7 @@ export default function CabAndTourPage() {
             markersRef.current.forEach(marker => marker.remove());
             markersRef.current = [];
             setTourStops(uploadedStopNames.map(name => ({ id: Date.now().toString() + name + Math.random(), name })));
-            uploadedStopNames.forEach(name => addMapMarker(name));
+            uploadedStopNames.forEach(name => addMapMarkerCityTour(name));
             toast({ title: "Tour Uploaded", description: "Tour stops have been loaded from file." });
           } else {
             throw new Error("Invalid file format. Expected an array of strings.");
@@ -180,9 +282,14 @@ export default function CabAndTourPage() {
   
   const handleCabBookingSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsLoading(true); // Use general loading for cab submit as well
     if (!pickupLocation || !dropoffLocation || !bookingDateTime) {
       toast({ title: "Missing Information", description: "Please fill all cab booking fields.", variant: "destructive" });
+      setIsLoading(false);
+      return;
+    }
+    if (!pickupCoordsCab || !dropoffCoordsCab) {
+      toast({ title: "Location Error", description: "Please ensure both pickup and dropoff locations are geocoded.", variant: "destructive" });
       setIsLoading(false);
       return;
     }
@@ -249,7 +356,7 @@ export default function CabAndTourPage() {
         </Link>
       </nav>
 
-      {isLoading && (
+      {(isLoading || isCabRouteLoading) && (
         <div className="fixed inset-0 bg-black/50 flex flex-col items-center justify-center z-[1000]">
           <div className="w-16 h-16 border-8 border-muted border-t-primary rounded-full animate-spin" />
           <div className="text-white mt-4 text-lg">Loading, please wait...</div>
@@ -350,18 +457,32 @@ export default function CabAndTourPage() {
                     <form onSubmit={handleCabBookingSubmit} className="space-y-3">
                       <div>
                         <Label htmlFor="pickupLoc">Pickup Location</Label>
-                        <Input id="pickupLoc" value={pickupLocation} onChange={e => setPickupLocation(e.target.value)} placeholder="Enter pickup location" required />
+                        <Input 
+                          id="pickupLoc" 
+                          value={pickupLocation} 
+                          onChange={e => setPickupLocation(e.target.value)} 
+                          onBlur={() => geocodeAndSetMarkerCab(pickupLocation, 'pickup')}
+                          placeholder="Enter pickup location" 
+                          required 
+                        />
                       </div>
                       <div>
                         <Label htmlFor="dropoffLoc">Dropoff Location</Label>
-                        <Input id="dropoffLoc" value={dropoffLocation} onChange={e => setDropoffLocation(e.target.value)} placeholder="Enter dropoff location" required />
+                        <Input 
+                          id="dropoffLoc" 
+                          value={dropoffLocation} 
+                          onChange={e => setDropoffLocation(e.target.value)} 
+                          onBlur={() => geocodeAndSetMarkerCab(dropoffLocation, 'dropoff')}
+                          placeholder="Enter dropoff location" 
+                          required 
+                        />
                       </div>
                       <div>
                         <Label htmlFor="bookingDateTime">Date & Time</Label>
                         <Input id="bookingDateTime" type="datetime-local" value={bookingDateTime} onChange={e => setBookingDateTime(e.target.value)} required />
                       </div>
-                      <Button type="submit" className="w-full rounded-full bg-accent text-accent-foreground" disabled={isLoading}>
-                        {isLoading && activeTab === 'cab' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Book Now & Proceed to Pay
+                      <Button type="submit" className="w-full rounded-full bg-accent text-accent-foreground" disabled={isLoading || isCabRouteLoading}>
+                        {(isLoading || isCabRouteLoading) && activeTab === 'cab' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Book Now & Proceed to Pay
                       </Button>
                     </form>
                   </div>
@@ -407,9 +528,6 @@ export default function CabAndTourPage() {
           </div>
         </div>
       </div>
-       <footer className="bg-muted py-8 text-center text-muted-foreground mt-12">
-        &copy; {new Date().getFullYear()} City Tour Planner. All rights reserved.
-      </footer>
     </>
   );
 }

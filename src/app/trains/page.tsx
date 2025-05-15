@@ -44,8 +44,10 @@ export default function TrainsPage() {
   // Loading and results
   const [isLoading, setIsLoading] = useState(false);
   const [trainResults, setTrainResults] = useState<TrainResult[]>([]);
+  const [currentYear, setCurrentYear] = useState<number | null>(null);
 
   useEffect(() => {
+    setCurrentYear(new Date().getFullYear());
     const today = new Date().toISOString().split('T')[0];
     setDepartureDate(today);
   }, []);
@@ -253,10 +255,6 @@ export default function TrainsPage() {
           )}
         </section>
       </div>
-
-      <footer className="bg-muted py-8 text-center text-muted-foreground mt-12">
-        &copy; {new Date().getFullYear()} TravelEase Simplified. All rights reserved.
-      </footer>
     </div>
   );
 }
