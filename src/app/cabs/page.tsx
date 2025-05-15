@@ -114,7 +114,7 @@ export default function CabAndTourPage() {
 
       return () => {
         if (mapInstanceRef.current && typeof mapInstanceRef.current.destroy === 'function') {
-            mapInstanceRef.current.destroy(); // MapmyIndia might use destroy()
+            mapInstanceRef.current.destroy();
             mapInstanceRef.current = null;
         }
       };
@@ -136,7 +136,6 @@ export default function CabAndTourPage() {
       }
 
       const data = await response.json();
-      
       const bestResult = data.copResults && data.copResults.length > 0 ? data.copResults[0] : null;
 
       if (bestResult && bestResult.latitude && bestResult.longitude) {
@@ -161,9 +160,15 @@ export default function CabAndTourPage() {
     }
   }, [toast]);
 
-  const geocodeAndSetMarkerCab = useCallback(async (address: string, type: 'pickup' | 'dropoff') => {
+  const geocodeAndSetMarkerCab = useCallback(async (address: string, type: 'pickup' | 'dropoff'): Promise<MapplsLatLng | null> => {
     if (!mapInstanceRef.current || !window.mappls || !address.trim()) return null;
-    setIsCabRouteLoading(true);
+    
+    let wasLoading = isCabRouteLoading;
+    if(type === 'pickup' && !pickupLocation) wasLoading = false; // prevent premature loader if only pickup is geocoding
+    if(type === 'dropoff' && !dropoffLocation) wasLoading = false;
+
+    if(!wasLoading) setIsCabRouteLoading(true);
+
     try {
       const geocodeURL = `https://atlas.mapmyindia.com/api/places/geocode?address=${encodeURIComponent(address)}&key=${MAP_MY_INDIA_API_KEY}`;
       const response = await fetch(geocodeURL);
@@ -172,6 +177,7 @@ export default function CabAndTourPage() {
         const errorText = await response.text();
         console.error(`Geocoding API error for ${address} (${type}): ${response.status} ${response.statusText}`);
         toast({ title: "Geocoding Error", description: `Failed to geocode: ${address}. Server: ${response.status}. ${errorText.substring(0,100)}`, variant: "destructive" });
+        if (type === 'pickup') setPickupCoordsCab(null); else setDropoffCoordsCab(null);
         return null;
       }
 
@@ -181,10 +187,6 @@ export default function CabAndTourPage() {
       if (bestResult && bestResult.latitude && bestResult.longitude) {
         const coordinates: MapplsLatLng = { lat: parseFloat(bestResult.latitude), lng: parseFloat(bestResult.longitude) };
         
-        const markerColor = type === 'pickup' ? '#007bff' : '#dc3545'; // Blue for pickup, Red for dropoff
-        // MapmyIndia marker styling might be different, using default for now
-        // or use icon options if available in mappls.Marker
-
         const existingMarkerRef = type === 'pickup' ? pickupMarkerRefCab : dropoffMarkerRefCab;
         if (existingMarkerRef.current) {
           existingMarkerRef.current.remove();
@@ -194,7 +196,6 @@ export default function CabAndTourPage() {
           map: mapInstanceRef.current,
           position: coordinates,
           title: address,
-          // icon_url: type === 'pickup' ? 'pickup_icon.png' : 'dropoff_icon.png' // Example for custom icons
         });
         
         if (type === 'pickup') {
@@ -209,16 +210,22 @@ export default function CabAndTourPage() {
         return coordinates;
       } else {
         toast({ title: "Location not found", description: `Could not find coordinates for: ${address}`, variant: "destructive" });
+        if (type === 'pickup') setPickupCoordsCab(null); else setDropoffCoordsCab(null);
         return null;
       }
     } catch (error) {
       console.error(`Error geocoding ${type} for cab (MapmyIndia):`, error);
       toast({ title: "Geocoding Error", description: `Failed to geocode: ${address}. ${(error as Error).message}`, variant: "destructive" });
+      if (type === 'pickup') setPickupCoordsCab(null); else setDropoffCoordsCab(null);
       return null;
     } finally {
-       if (type === 'dropoff' || (type === 'pickup' && !dropoffLocation) ) setIsCabRouteLoading(false);
+       if (!wasLoading) { // Only stop loading if this call started it
+         if ((type === 'pickup' && dropoffLocation.trim() === '' ) || type === 'dropoff') { // if it's pickup and no dropoff, or it is dropoff
+            setIsCabRouteLoading(false);
+         }
+       }
     }
-  }, [toast, dropoffLocation]);
+  }, [toast, pickupLocation, dropoffLocation, isCabRouteLoading]);
 
   const fetchAndDrawCabRoute = useCallback(async (start: MapplsLatLng, end: MapplsLatLng) => {
     if (!mapInstanceRef.current || !window.mappls) return;
@@ -247,7 +254,7 @@ export default function CabAndTourPage() {
         cabRoutePolylineRef.current = new window.mappls.Polyline({
           map: mapInstanceRef.current,
           path: decodedPath,
-          color: '#007BFF', // Primary color
+          color: '#007BFF', 
           opacity: 0.8,
           weight: 5
         });
@@ -303,10 +310,18 @@ export default function CabAndTourPage() {
         cabRoutePolylineRef.current.remove();
         cabRoutePolylineRef.current = null;
     }
-    if(pickupMarkerRefCab.current) pickupMarkerRefCab.current.remove();
-    if(dropoffMarkerRefCab.current) dropoffMarkerRefCab.current.remove();
+    if(pickupMarkerRefCab.current) {
+      pickupMarkerRefCab.current.remove();
+      pickupMarkerRefCab.current = null;
+    }
+    if(dropoffMarkerRefCab.current) {
+      dropoffMarkerRefCab.current.remove();
+      dropoffMarkerRefCab.current = null;
+    }
     setPickupCoordsCab(null);
     setDropoffCoordsCab(null);
+    setPickupLocation('');
+    setDropoffLocation('');
     toast({ title: "Map and Lists Cleared", description: "All stops and routes have been removed." });
   };
 
@@ -354,27 +369,41 @@ export default function CabAndTourPage() {
         }
       };
       reader.readAsText(file);
-      event.target.value = ''; // Reset file input
+      event.target.value = ''; 
     }
   };
   
-  const handleCabBookingSubmit = (e: React.FormEvent) => {
+  const handleCabBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+
     if (!pickupLocation || !dropoffLocation || !bookingDateTime) {
       toast({ title: "Missing Information", description: "Please fill all cab booking fields.", variant: "destructive" });
       setIsLoading(false);
       return;
     }
-    if (!pickupCoordsCab || !dropoffCoordsCab) {
-      toast({ title: "Location Error", description: "Please ensure both pickup and dropoff locations are geocoded.", variant: "destructive" });
+
+    let currentPickupCoords = pickupCoordsCab;
+    let currentDropoffCoords = dropoffCoordsCab;
+
+    if (!currentPickupCoords && pickupLocation) {
+      currentPickupCoords = await geocodeAndSetMarkerCab(pickupLocation, 'pickup');
+    }
+    if (!currentDropoffCoords && dropoffLocation) {
+      currentDropoffCoords = await geocodeAndSetMarkerCab(dropoffLocation, 'dropoff');
+    }
+
+    if (!currentPickupCoords || !currentDropoffCoords) {
+      toast({ title: "Location Error", description: "Please ensure both pickup and dropoff locations are geocoded successfully.", variant: "destructive" });
       setIsLoading(false);
       return;
     }
+    
     toast({ title: "Cab Booking Submitted", description: `Booking from ${pickupLocation} to ${dropoffLocation} for ${bookingDateTime}. Proceeding to payment.` });
+    // Simulate API call or further processing
     setTimeout(() => {
       setIsLoading(false);
-      router.push('/payment');
+      router.push('/payment'); 
     }, 1500);
   };
 
@@ -425,7 +454,6 @@ export default function CabAndTourPage() {
         strategy="afterInteractive"
         onLoad={() => {
           // console.log('MapmyIndia SDK script loaded.');
-          // Ensure map init logic runs after SDK is loaded, handled by useEffect dependency on window.mappls
         }}
       />
       <nav className="p-4 container mx-auto">
@@ -521,8 +549,8 @@ export default function CabAndTourPage() {
                         <Trash2 className="mr-2 h-4 w-4" /> Clear All
                       </Button>
                     </div>
-                    <Button onClick={handlePayAndBookTour} className="w-full mt-3 rounded-full bg-primary text-primary-foreground" disabled={isLoading}>
-                       {isLoading && activeTab === 'cityTour' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "💳"} Pay via UPI & Book Tour
+                    <Button onClick={handlePayAndBookTour} className="w-full mt-3 rounded-full bg-primary text-primary-foreground" disabled={isLoading && activeTab === 'cityTour'}>
+                       {(isLoading && activeTab === 'cityTour') ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "💳"} Pay via UPI & Book Tour
                     </Button>
                   </div>
                 )}
@@ -536,8 +564,8 @@ export default function CabAndTourPage() {
                         <Input 
                           id="pickupLoc" 
                           value={pickupLocation} 
-                          onChange={e => setPickupLocation(e.target.value)} 
-                          onBlur={() => geocodeAndSetMarkerCab(pickupLocation, 'pickup')}
+                          onChange={e => { setPickupLocation(e.target.value); setPickupCoordsCab(null); }}
+                          onBlur={() => pickupLocation.trim() && geocodeAndSetMarkerCab(pickupLocation, 'pickup')}
                           placeholder="Enter pickup location" 
                           required 
                         />
@@ -547,8 +575,8 @@ export default function CabAndTourPage() {
                         <Input 
                           id="dropoffLoc" 
                           value={dropoffLocation} 
-                          onChange={e => setDropoffLocation(e.target.value)} 
-                          onBlur={() => geocodeAndSetMarkerCab(dropoffLocation, 'dropoff')}
+                          onChange={e => { setDropoffLocation(e.target.value); setDropoffCoordsCab(null);}}
+                          onBlur={() => dropoffLocation.trim() && geocodeAndSetMarkerCab(dropoffLocation, 'dropoff')}
                           placeholder="Enter dropoff location" 
                           required 
                         />
@@ -557,8 +585,8 @@ export default function CabAndTourPage() {
                         <Label htmlFor="bookingDateTime">Date & Time</Label>
                         <Input id="bookingDateTime" type="datetime-local" value={bookingDateTime} onChange={e => setBookingDateTime(e.target.value)} required />
                       </div>
-                      <Button type="submit" className="w-full rounded-full bg-accent text-accent-foreground" disabled={isLoading || isCabRouteLoading}>
-                        {(isLoading || isCabRouteLoading) && activeTab === 'cab' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Book Now & Proceed to Pay
+                      <Button type="submit" className="w-full rounded-full bg-accent text-accent-foreground" disabled={isLoading && activeTab === 'cab' || isCabRouteLoading}>
+                        {(isLoading && activeTab === 'cab' || isCabRouteLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Book Now & Proceed to Pay
                       </Button>
                     </form>
                   </div>
@@ -580,8 +608,8 @@ export default function CabAndTourPage() {
                         <Label htmlFor="multiCity3">City 3 (Optional)</Label>
                         <Input id="multiCity3" value={city3} onChange={e => setCity3(e.target.value)} placeholder="Enter third city" />
                       </div>
-                      <Button type="submit" className="w-full rounded-full bg-primary text-primary-foreground" disabled={isLoading}>
-                         {isLoading && activeTab === 'multiCity' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Route className="mr-2 h-4 w-4" />}
+                      <Button type="submit" className="w-full rounded-full bg-primary text-primary-foreground" disabled={isLoading && activeTab === 'multiCity'}>
+                         {(isLoading && activeTab === 'multiCity') ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Route className="mr-2 h-4 w-4" />}
                          Search Multi-City & Proceed to Pay
                       </Button>
                     </form>
@@ -606,5 +634,3 @@ export default function CabAndTourPage() {
     </>
   );
 }
-
-    
