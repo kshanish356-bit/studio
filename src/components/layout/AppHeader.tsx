@@ -133,8 +133,8 @@ export default function AppHeader() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button onClick={() => setIsAuthModalOpen(true)} className="btn-auth">
-                <User className="mr-2 h-4 w-4" /> Login / Sign Up
+              <Button onClick={() => setIsAuthModalOpen(true)}>
+                <User className="h-4 w-4" /> Login / Sign Up
               </Button>
             )}
           </div>
