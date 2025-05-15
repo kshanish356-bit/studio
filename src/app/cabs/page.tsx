@@ -8,7 +8,7 @@ import Script from 'next/script';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'; // CardHeader and CardTitle are used, so kept.
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { UploadCloud, DownloadCloud, Trash2, Route, MapPin, Building, Navigation, Edit3, Loader2 } from 'lucide-react';
@@ -127,6 +127,14 @@ export default function CabAndTourPage() {
     try {
       const geocodeURL = `https://atlas.mapmyindia.com/api/places/geocode?address=${encodeURIComponent(stopName)}&key=${MAP_MY_INDIA_API_KEY}`;
       const response = await fetch(geocodeURL);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Geocoding API error for ${stopName}: ${response.status} ${response.statusText}`);
+        toast({ title: "Geocoding Error", description: `Failed to geocode: ${stopName}. Server: ${response.status}. ${errorText.substring(0,100)}`, variant: "destructive" });
+        return;
+      }
+
       const data = await response.json();
       
       const bestResult = data.copResults && data.copResults.length > 0 ? data.copResults[0] : null;
@@ -149,7 +157,7 @@ export default function CabAndTourPage() {
       }
     } catch (error) {
       console.error("Error adding city tour marker (MapmyIndia):", error);
-      toast({ title: "Geocoding Error", description: `Failed to geocode: ${stopName}`, variant: "destructive" });
+      toast({ title: "Geocoding Error", description: `Failed to geocode: ${stopName}. ${(error as Error).message}`, variant: "destructive" });
     }
   }, [toast]);
 
@@ -159,6 +167,14 @@ export default function CabAndTourPage() {
     try {
       const geocodeURL = `https://atlas.mapmyindia.com/api/places/geocode?address=${encodeURIComponent(address)}&key=${MAP_MY_INDIA_API_KEY}`;
       const response = await fetch(geocodeURL);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Geocoding API error for ${address} (${type}): ${response.status} ${response.statusText}`);
+        toast({ title: "Geocoding Error", description: `Failed to geocode: ${address}. Server: ${response.status}. ${errorText.substring(0,100)}`, variant: "destructive" });
+        return null;
+      }
+
       const data = await response.json();
       const bestResult = data.copResults && data.copResults.length > 0 ? data.copResults[0] : null;
 
@@ -197,7 +213,7 @@ export default function CabAndTourPage() {
       }
     } catch (error) {
       console.error(`Error geocoding ${type} for cab (MapmyIndia):`, error);
-      toast({ title: "Geocoding Error", description: `Failed to geocode: ${address}`, variant: "destructive" });
+      toast({ title: "Geocoding Error", description: `Failed to geocode: ${address}. ${(error as Error).message}`, variant: "destructive" });
       return null;
     } finally {
        if (type === 'dropoff' || (type === 'pickup' && !dropoffLocation) ) setIsCabRouteLoading(false);
@@ -210,6 +226,14 @@ export default function CabAndTourPage() {
     try {
       const directionsURL = `https://atlas.mapmyindia.com/api/routemon/vector/driving/${start.lng},${start.lat};${end.lng},${end.lat}?key=${MAP_MY_INDIA_API_KEY}&alternatives=false&overview=full&geometries=polyline&steps=false`;
       const response = await fetch(directionsURL);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Routing API error: ${response.status} ${response.statusText}`);
+        toast({ title: "Routing Error", description: `Failed to fetch route. Server: ${response.status}. ${errorText.substring(0,100)}`, variant: "destructive" });
+        return;
+      }
+      
       const data = await response.json();
 
       if (data.routes && data.routes.length > 0 && data.routes[0].geometry) {
@@ -237,7 +261,7 @@ export default function CabAndTourPage() {
       }
     } catch (error) {
       console.error("Error fetching cab route (MapmyIndia):", error);
-      toast({ title: "Routing Error", description: "Failed to fetch route.", variant: "destructive" });
+      toast({ title: "Routing Error", description: `Failed to fetch route. ${(error as Error).message}`, variant: "destructive" });
     } finally {
       setIsCabRouteLoading(false);
     }
@@ -421,7 +445,7 @@ export default function CabAndTourPage() {
         <div className="flex flex-col md:flex-row gap-8">
           {/* Left Panel */}
           <div className="w-full md:w-1/3">
-            <Card className="shadow-lg">
+            <Card>
               <CardContent className="p-2 md:p-4">
                 <div className="flex gap-2 mb-4">
                   <Button
@@ -582,3 +606,5 @@ export default function CabAndTourPage() {
     </>
   );
 }
+
+    
