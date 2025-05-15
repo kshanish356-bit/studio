@@ -260,27 +260,27 @@ export default function CabAndTourPage() {
         <div className="flex flex-col md:flex-row gap-8">
           {/* Left Panel */}
           <div className="w-full md:w-1/3">
-            <Card className="shadow-lg"> {/* Removed p-4 from Card */}
-              <CardContent className="p-2 md:p-4"> {/* Padding handled by CardContent */}
-                <div className="flex space-x-2 mb-4">
+            <Card className="shadow-lg">
+              <CardContent className="p-2 md:p-4">
+                <div className="flex gap-2 mb-4">
                   <Button
                     variant={activeTab === 'cab' ? 'default' : 'outline'}
                     onClick={() => setActiveTab('cab')}
-                    className="flex-1 rounded-full"
+                    className="flex-1 rounded-full min-w-0"
                   >
                     <Building className="mr-2 h-4 w-4" /> Book Cab
                   </Button>
                   <Button
                     variant={activeTab === 'cityTour' ? 'default' : 'outline'}
                     onClick={() => setActiveTab('cityTour')}
-                    className="flex-1 rounded-full"
+                    className="flex-1 rounded-full min-w-0"
                   >
                     <MapPin className="mr-2 h-4 w-4" /> City Tour
                   </Button>
                   <Button
                     variant={activeTab === 'multiCity' ? 'default' : 'outline'}
                     onClick={() => setActiveTab('multiCity')}
-                    className="flex-1 rounded-full"
+                    className="flex-1 rounded-full min-w-0"
                   >
                     <Route className="mr-2 h-4 w-4" /> Multi-City
                   </Button>
@@ -414,4 +414,3 @@ export default function CabAndTourPage() {
     </>
   );
 }
-
