@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { UploadCloud, DownloadCloud, Trash2, Route, MapPin, Building, Navigation, Edit3, Loader2 } from 'lucide-react'; // Added Loader2
+import { UploadCloud, DownloadCloud, Trash2, Route, MapPin, Building, Navigation, Edit3, Loader2 } from 'lucide-react';
 
 // Declare mapboxgl
 declare global {
@@ -54,7 +54,7 @@ export default function CabAndTourPage() {
   const markersRef = useRef<any[]>([]); // For Mapbox marker instances
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const MAPBOX_ACCESS_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || 'pk.eyJ1IjoiZXhhbXBsZXVzZXIiLCJhIjoiY2wxeGJlb2F4MDE3YzJubHVmZmJoYjB4OCJ9.3p0YO7nprdfRCVzmE-Ujgg'; // Replace with your actual token, ideally from env
+  const MAPBOX_ACCESS_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || 'pk.eyJ1IjoiZXhhbXBsZXVzZXIiLCJhIjoiY2wxeGJlb2F4MDE3YzJubHVmZmJoYjB4OCJ9.3p0YO7nprdfRCVzmE-Ujgg'; 
 
   useEffect(() => {
     if (typeof window.mapboxgl !== 'undefined' && mapContainerRef.current && !mapInstanceRef.current) {
@@ -72,8 +72,10 @@ export default function CabAndTourPage() {
       });
 
       return () => {
-        map.remove();
-        mapInstanceRef.current = null;
+        if (mapInstanceRef.current) {
+            mapInstanceRef.current.remove();
+            mapInstanceRef.current = null;
+        }
       };
     }
   }, [MAPBOX_ACCESS_TOKEN]);
@@ -166,8 +168,8 @@ export default function CabAndTourPage() {
           } else {
             throw new Error("Invalid file format. Expected an array of strings.");
           }
-        } catch (err) {
-          toast({ title: "Upload Error", description: "Invalid JSON file or format.", variant: "destructive" });
+        } catch (err: any) {
+          toast({ title: "Upload Error", description: err.message || "Invalid JSON file or format.", variant: "destructive" });
           console.error(err);
         }
       };
@@ -217,8 +219,12 @@ export default function CabAndTourPage() {
       toast({ title: "Empty Tour", description: "Please add stops to your tour before booking.", variant: "destructive" });
       return;
     }
+    setIsLoading(true);
     toast({ title: "Booking Tour", description: "Proceeding to payment for your custom tour." });
-    router.push('/payment');
+    setTimeout(() => {
+      setIsLoading(false);
+      router.push('/payment');
+    }, 1500);
   };
 
   const presetTours = {
@@ -231,7 +237,7 @@ export default function CabAndTourPage() {
   return (
     <>
       <Script
-        src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"
+        src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js" // Ensure this version matches the CSS if you hardcode CSS link
         strategy="afterInteractive"
         onLoad={() => {
           console.log('Mapbox GL JS script loaded.');
@@ -253,9 +259,9 @@ export default function CabAndTourPage() {
       <div className="container mx-auto mt-4 px-4">
         <div className="flex flex-col md:flex-row gap-8">
           {/* Left Panel */}
-          <div className="w-full md:w-1/3"> {/* Adjusted width for left panel */}
-            <Card className="p-4 shadow-lg">
-              <CardContent className="p-2 md:p-4">
+          <div className="w-full md:w-1/3">
+            <Card className="shadow-lg"> {/* Removed p-4 from Card */}
+              <CardContent className="p-2 md:p-4"> {/* Padding handled by CardContent */}
                 <div className="flex space-x-2 mb-4">
                   <Button
                     variant={activeTab === 'cab' ? 'default' : 'outline'}
@@ -286,7 +292,7 @@ export default function CabAndTourPage() {
                     <p className="font-medium">Select a Preset City Tour:</p>
                     <div className="mb-3 space-x-2">
                       {Object.entries(presetTours).map(([name, stops]) => (
-                        <Button key={name} variant="outline" size="sm" onClick={() => loadPresetTour(stops)}>
+                        <Button key={name} variant="outline" size="sm" onClick={() => loadPresetTour(stops)} className="rounded-full">
                           {name}
                         </Button>
                       ))}
@@ -332,8 +338,8 @@ export default function CabAndTourPage() {
                         <Trash2 className="mr-2 h-4 w-4" /> Clear
                       </Button>
                     </div>
-                    <Button onClick={handlePayAndBookTour} className="w-full mt-3 rounded-full bg-primary text-primary-foreground">
-                       💳 Pay via UPI & Book Tour
+                    <Button onClick={handlePayAndBookTour} className="w-full mt-3 rounded-full bg-primary text-primary-foreground" disabled={isLoading}>
+                       {isLoading && activeTab === 'cityTour' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "💳"} Pay via UPI & Book Tour
                     </Button>
                   </div>
                 )}
@@ -355,7 +361,7 @@ export default function CabAndTourPage() {
                         <Input id="bookingDateTime" type="datetime-local" value={bookingDateTime} onChange={e => setBookingDateTime(e.target.value)} required />
                       </div>
                       <Button type="submit" className="w-full rounded-full bg-accent text-accent-foreground" disabled={isLoading}>
-                        {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Book Now & Proceed to Pay
+                        {isLoading && activeTab === 'cab' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Book Now & Proceed to Pay
                       </Button>
                     </form>
                   </div>
@@ -377,8 +383,8 @@ export default function CabAndTourPage() {
                         <Label htmlFor="multiCity3">City 3 (Optional)</Label>
                         <Input id="multiCity3" value={city3} onChange={e => setCity3(e.target.value)} placeholder="Enter third city" />
                       </div>
-                      <Button type="submit" className="w-full rounded-full bg-primary text-primary-foreground" disabled={isLoading}> {/* Changed color to primary */}
-                         {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Route className="mr-2 h-4 w-4" />}
+                      <Button type="submit" className="w-full rounded-full bg-primary text-primary-foreground" disabled={isLoading}>
+                         {isLoading && activeTab === 'multiCity' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Route className="mr-2 h-4 w-4" />}
                          Search Multi-City & Proceed to Pay
                       </Button>
                     </form>
@@ -389,11 +395,13 @@ export default function CabAndTourPage() {
           </div>
 
           {/* Right Panel - Map */}
-          <div className="w-full md:w-2/3"> {/* Adjusted width for right panel (map) */}
+          <div className="w-full md:w-2/3">
             <Card className="p-1 md:p-2 shadow-lg h-[520px] md:h-auto">
               <CardContent className="p-0 h-full">
                 <div ref={mapContainerRef} className="w-full h-full rounded-md min-h-[500px] bg-muted flex items-center justify-center">
-                  <p className="text-muted-foreground">Map is loading...</p>
+                  {/* Display this message if mapboxgl is not yet loaded */}
+                  {typeof window !== 'undefined' && !window.mapboxgl && <p className="text-muted-foreground">Initializing map...</p>}
+                  {/* Map will be initialized here; if it fails or is loading, this provides fallback text. */}
                 </div>
               </CardContent>
             </Card>
@@ -406,3 +414,4 @@ export default function CabAndTourPage() {
     </>
   );
 }
+
