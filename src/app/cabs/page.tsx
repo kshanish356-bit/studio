@@ -68,7 +68,7 @@ export default function CabAndTourPage() {
       mapInstanceRef.current = map;
 
       map.on('load', () => {
-        console.log("Map loaded successfully.");
+        // console.log("Map loaded successfully.");
       });
 
       return () => {
@@ -237,10 +237,10 @@ export default function CabAndTourPage() {
   return (
     <>
       <Script
-        src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js" // Ensure this version matches the CSS if you hardcode CSS link
+        src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"
         strategy="afterInteractive"
         onLoad={() => {
-          console.log('Mapbox GL JS script loaded.');
+          // console.log('Mapbox GL JS script loaded.');
         }}
       />
       <nav className="p-4 container mx-auto">
@@ -290,7 +290,7 @@ export default function CabAndTourPage() {
                   <div id="cityTourSection">
                     <h3 className="text-xl font-semibold mb-3 flex items-center"><Edit3 className="mr-2 h-5 w-5 text-primary"/> City Tours</h3>
                     <p className="font-medium">Select a Preset City Tour:</p>
-                    <div className="mb-3 space-x-2">
+                    <div className="mb-3 flex flex-wrap gap-2">
                       {Object.entries(presetTours).map(([name, stops]) => (
                         <Button key={name} variant="outline" size="sm" onClick={() => loadPresetTour(stops)} className="rounded-full">
                           {name}
@@ -401,7 +401,6 @@ export default function CabAndTourPage() {
                 <div ref={mapContainerRef} className="w-full h-full rounded-md min-h-[500px] bg-muted flex items-center justify-center">
                   {/* Display this message if mapboxgl is not yet loaded */}
                   {typeof window !== 'undefined' && !window.mapboxgl && <p className="text-muted-foreground">Initializing map...</p>}
-                  {/* Map will be initialized here; if it fails or is loading, this provides fallback text. */}
                 </div>
               </CardContent>
             </Card>
@@ -414,3 +413,5 @@ export default function CabAndTourPage() {
     </>
   );
 }
+
+    
