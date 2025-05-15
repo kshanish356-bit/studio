@@ -33,6 +33,18 @@ interface MapplsLatLng {
   lng: number;
 }
 
+interface MapplsAutosuggestResult {
+  eLoc: string;
+  placeName: string;
+  placeAddress: string;
+  type: string;
+  orderIndex: number;
+  alternateName: string;
+  keywords: string[];
+  // Add other fields as needed based on the API response
+}
+
+
 const MAP_MY_INDIA_API_KEY = 'b8558b6a01dd83cc4de527d1a5948af8'; // Extracted from the script URL
 
 // Polyline decoding function (standard algorithm)
@@ -84,11 +96,33 @@ export default function CabAndTourPage() {
   const [pickupCoordsCab, setPickupCoordsCab] = useState<MapplsLatLng | null>(null);
   const [dropoffCoordsCab, setDropoffCoordsCab] = useState<MapplsLatLng | null>(null);
   const [isCabRouteLoading, setIsCabRouteLoading] = useState(false);
+  const [pickupSuggestions, setPickupSuggestions] = useState<MapplsAutosuggestResult[]>([]);
+  const [dropoffSuggestions, setDropoffSuggestions] = useState<MapplsAutosuggestResult[]>([]);
+  const [isPickupSuggestionsLoading, setIsPickupSuggestionsLoading] = useState(false);
+  const [isDropoffSuggestionsLoading, setIsDropoffSuggestionsLoading] = useState(false);
+  const [showPickupSuggestions, setShowPickupSuggestions] = useState(false);
+  const [showDropoffSuggestions, setShowDropoffSuggestions] = useState(false);
+  const pickupDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const dropoffDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
 
   // Multi-City State
   const [city1, setCity1] = useState('');
   const [city2, setCity2] = useState('');
   const [city3, setCity3] = useState('');
+  const [city1Suggestions, setCity1Suggestions] = useState<MapplsAutosuggestResult[]>([]);
+  const [city2Suggestions, setCity2Suggestions] = useState<MapplsAutosuggestResult[]>([]);
+  const [city3Suggestions, setCity3Suggestions] = useState<MapplsAutosuggestResult[]>([]);
+  const [isCity1LoadingSuggestions, setIsCity1LoadingSuggestions] = useState(false);
+  const [isCity2LoadingSuggestions, setIsCity2LoadingSuggestions] = useState(false);
+  const [isCity3LoadingSuggestions, setIsCity3LoadingSuggestions] = useState(false);
+  const [showCity1Suggestions, setShowCity1Suggestions] = useState(false);
+  const [showCity2Suggestions, setShowCity2Suggestions] = useState(false);
+  const [showCity3Suggestions, setShowCity3Suggestions] = useState(false);
+  const city1DebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const city2DebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const city3DebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
 
   const [isLoading, setIsLoading] = useState(false); // General loading state
 
@@ -130,7 +164,7 @@ export default function CabAndTourPage() {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`Geocoding API error for ${stopName}: ${response.status} ${response.statusText}`);
+        console.error(`Geocoding API error for ${stopName}: ${response.status} ${response.statusText}`, errorText);
         toast({ title: "Geocoding Error", description: `Failed to geocode: ${stopName}. Server: ${response.status}. ${errorText.substring(0,100)}`, variant: "destructive" });
         return;
       }
@@ -164,7 +198,7 @@ export default function CabAndTourPage() {
     if (!mapInstanceRef.current || !window.mappls || !address.trim()) return null;
     
     let wasLoading = isCabRouteLoading;
-    if(type === 'pickup' && !pickupLocation) wasLoading = false; // prevent premature loader if only pickup is geocoding
+    if(type === 'pickup' && !pickupLocation) wasLoading = false; 
     if(type === 'dropoff' && !dropoffLocation) wasLoading = false;
 
     if(!wasLoading) setIsCabRouteLoading(true);
@@ -175,7 +209,7 @@ export default function CabAndTourPage() {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`Geocoding API error for ${address} (${type}): ${response.status} ${response.statusText}`);
+        console.error(`Geocoding API error for ${address} (${type}): ${response.status} ${response.statusText}`, errorText);
         toast({ title: "Geocoding Error", description: `Failed to geocode: ${address}. Server: ${response.status}. ${errorText.substring(0,100)}`, variant: "destructive" });
         if (type === 'pickup') setPickupCoordsCab(null); else setDropoffCoordsCab(null);
         return null;
@@ -196,6 +230,11 @@ export default function CabAndTourPage() {
           map: mapInstanceRef.current,
           position: coordinates,
           title: address,
+          icon_options: {
+             iconUrl: `https://maps.mapmyindia.com/images/${type === 'pickup' ? 'pickup_Marker' : 'drop_Marker'}.png`, // Example marker icons
+             iconHeight: 40,
+             iconWidth: 30,
+          }
         });
         
         if (type === 'pickup') {
@@ -219,8 +258,8 @@ export default function CabAndTourPage() {
       if (type === 'pickup') setPickupCoordsCab(null); else setDropoffCoordsCab(null);
       return null;
     } finally {
-       if (!wasLoading) { // Only stop loading if this call started it
-         if ((type === 'pickup' && dropoffLocation.trim() === '' ) || type === 'dropoff') { // if it's pickup and no dropoff, or it is dropoff
+       if (!wasLoading) { 
+         if ((type === 'pickup' && dropoffLocation.trim() === '' ) || type === 'dropoff') { 
             setIsCabRouteLoading(false);
          }
        }
@@ -236,7 +275,7 @@ export default function CabAndTourPage() {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`Routing API error: ${response.status} ${response.statusText}`);
+        console.error(`Routing API error: ${response.status} ${response.statusText}`, errorText);
         toast({ title: "Routing Error", description: `Failed to fetch route. Server: ${response.status}. ${errorText.substring(0,100)}`, variant: "destructive" });
         return;
       }
@@ -277,8 +316,77 @@ export default function CabAndTourPage() {
   useEffect(() => {
     if (pickupCoordsCab && dropoffCoordsCab) {
       fetchAndDrawCabRoute(pickupCoordsCab, dropoffCoordsCab);
+    } else {
+      // If one of them becomes null, remove the route
+      if (cabRoutePolylineRef.current) {
+        cabRoutePolylineRef.current.remove();
+        cabRoutePolylineRef.current = null;
+      }
     }
   }, [pickupCoordsCab, dropoffCoordsCab, fetchAndDrawCabRoute]);
+
+
+  const handleInputChangeAndFetchSuggestions = useCallback(async (
+    inputValue: string,
+    setSuggestionsState: React.Dispatch<React.SetStateAction<MapplsAutosuggestResult[]>>,
+    setIsLoadingState: React.Dispatch<React.SetStateAction<boolean>>,
+    setShowSuggestionsState: React.Dispatch<React.SetStateAction<boolean>>,
+    debounceTimerRef: React.MutableRefObject<NodeJS.Timeout | null>
+  ) => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    if (!inputValue.trim()) {
+      setSuggestionsState([]);
+      setShowSuggestionsState(false);
+      setIsLoadingState(false);
+      return;
+    }
+
+    setIsLoadingState(true);
+    setShowSuggestionsState(true); // Show loading/suggestions panel
+
+    debounceTimerRef.current = setTimeout(async () => {
+      try {
+        const autosuggestURL = `https://atlas.mapmyindia.com/api/places/autosuggest?query=${encodeURIComponent(inputValue)}&key=${MAP_MY_INDIA_API_KEY}&filter=type:city`; // Filter for city type initially
+        const response = await fetch(autosuggestURL);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Autosuggest API error:', response.status, response.statusText, errorText);
+          toast({ title: "Autosuggest Error", description: `Server: ${response.status}. ${errorText.substring(0,100)}`, variant: "destructive" });
+          setSuggestionsState([]);
+          return;
+        }
+        const data = await response.json();
+        setSuggestionsState(data.suggestedLocations || []);
+      } catch (error) {
+        console.error("Error fetching autosuggest results:", error);
+        toast({ title: "Autosuggest Error", description: (error as Error).message, variant: "destructive" });
+        setSuggestionsState([]);
+      } finally {
+        setIsLoadingState(false);
+      }
+    }, 500); // 500ms debounce
+  }, [toast]);
+
+
+  const handleSuggestionClick = useCallback((
+    suggestion: MapplsAutosuggestResult,
+    setLocationState: React.Dispatch<React.SetStateAction<string>>,
+    setShowSuggestionsState: React.Dispatch<React.SetStateAction<boolean>>,
+    setCoordsState?: React.Dispatch<React.SetStateAction<MapplsLatLng | null>>, // Optional for cab booking
+    geocodeType?: 'pickup' | 'dropoff' // Optional for cab booking
+  ) => {
+    setLocationState(suggestion.placeName || suggestion.placeAddress);
+    setShowSuggestionsState(false);
+    if (setCoordsState && geocodeType) {
+      // For cab booking, directly geocode the selected eLoc for precision
+      // Or use the placeName/placeAddress if eLoc geocoding is not robust enough
+      geocodeAndSetMarkerCab(suggestion.placeAddress || suggestion.placeName, geocodeType);
+    }
+  }, [geocodeAndSetMarkerCab]);
+
 
 
   const handleAddStop = () => {
@@ -322,6 +430,8 @@ export default function CabAndTourPage() {
     setDropoffCoordsCab(null);
     setPickupLocation('');
     setDropoffLocation('');
+    setShowPickupSuggestions(false);
+    setShowDropoffSuggestions(false);
     toast({ title: "Map and Lists Cleared", description: "All stops and routes have been removed." });
   };
 
@@ -375,7 +485,7 @@ export default function CabAndTourPage() {
   
   const handleCabBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsLoading(true); // Use general isLoading for submit button
 
     if (!pickupLocation || !dropoffLocation || !bookingDateTime) {
       toast({ title: "Missing Information", description: "Please fill all cab booking fields.", variant: "destructive" });
@@ -384,12 +494,12 @@ export default function CabAndTourPage() {
     }
 
     let currentPickupCoords = pickupCoordsCab;
-    let currentDropoffCoords = dropoffCoordsCab;
-
-    if (!currentPickupCoords && pickupLocation) {
+    if (!currentPickupCoords && pickupLocation.trim()) {
       currentPickupCoords = await geocodeAndSetMarkerCab(pickupLocation, 'pickup');
     }
-    if (!currentDropoffCoords && dropoffLocation) {
+
+    let currentDropoffCoords = dropoffCoordsCab;
+    if (!currentDropoffCoords && dropoffLocation.trim()) {
       currentDropoffCoords = await geocodeAndSetMarkerCab(dropoffLocation, 'dropoff');
     }
 
@@ -400,7 +510,6 @@ export default function CabAndTourPage() {
     }
     
     toast({ title: "Cab Booking Submitted", description: `Booking from ${pickupLocation} to ${dropoffLocation} for ${bookingDateTime}. Proceeding to payment.` });
-    // Simulate API call or further processing
     setTimeout(() => {
       setIsLoading(false);
       router.push('/payment'); 
@@ -462,7 +571,7 @@ export default function CabAndTourPage() {
         </Link>
       </nav>
 
-      {(isLoading || isCabRouteLoading) && (
+      {(isLoading || isCabRouteLoading || isPickupSuggestionsLoading || isDropoffSuggestionsLoading || isCity1LoadingSuggestions || isCity2LoadingSuggestions || isCity3LoadingSuggestions) && (
         <div className="fixed inset-0 bg-black/50 flex flex-col items-center justify-center z-[1000]">
           <div className="w-16 h-16 border-8 border-muted border-t-primary rounded-full animate-spin" />
           <div className="text-white mt-4 text-lg">Loading, please wait...</div>
@@ -559,27 +668,79 @@ export default function CabAndTourPage() {
                   <div id="bookCabSection">
                     <h4 className="text-lg font-semibold mb-3 flex items-center"><Building className="mr-2 h-5 w-5 text-primary"/> Book a Cab</h4>
                     <form onSubmit={handleCabBookingSubmit} className="space-y-3">
-                      <div>
+                      <div className="relative">
                         <Label htmlFor="pickupLoc">Pickup Location</Label>
-                        <Input 
-                          id="pickupLoc" 
-                          value={pickupLocation} 
-                          onChange={e => { setPickupLocation(e.target.value); setPickupCoordsCab(null); }}
-                          onBlur={() => pickupLocation.trim() && geocodeAndSetMarkerCab(pickupLocation, 'pickup')}
-                          placeholder="Enter pickup location" 
-                          required 
-                        />
+                        <div className="flex items-center">
+                            <Input 
+                            id="pickupLoc" 
+                            value={pickupLocation} 
+                            onChange={e => {
+                                setPickupLocation(e.target.value); 
+                                setPickupCoordsCab(null);
+                                handleInputChangeAndFetchSuggestions(e.target.value, setPickupSuggestions, setIsPickupSuggestionsLoading, setShowPickupSuggestions, pickupDebounceTimerRef);
+                            }}
+                            onFocus={() => pickupLocation && pickupSuggestions.length > 0 && setShowPickupSuggestions(true)}
+                            onBlur={() => {
+                                setTimeout(() => setShowPickupSuggestions(false), 200); // Delay to allow click on suggestion
+                                if (pickupLocation.trim() && !pickupCoordsCab) geocodeAndSetMarkerCab(pickupLocation, 'pickup');
+                            }}
+                            placeholder="Enter pickup location" 
+                            required 
+                            className="flex-grow"
+                            />
+                            {isPickupSuggestionsLoading && <Loader2 className="h-5 w-5 animate-spin ml-2" />}
+                        </div>
+                        {showPickupSuggestions && pickupSuggestions.length > 0 && (
+                          <ul className="absolute z-10 w-full bg-card border border-border rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
+                            {pickupSuggestions.map(suggestion => (
+                              <li 
+                                key={suggestion.eLoc} 
+                                className="p-2 hover:bg-accent cursor-pointer"
+                                onMouseDown={() => handleSuggestionClick(suggestion, setPickupLocation, setShowPickupSuggestions, setPickupCoordsCab, 'pickup')}
+                              >
+                                <p className="font-medium">{suggestion.placeName}</p>
+                                <p className="text-sm text-muted-foreground">{suggestion.placeAddress}</p>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
                       </div>
-                      <div>
+                      <div className="relative">
                         <Label htmlFor="dropoffLoc">Dropoff Location</Label>
-                        <Input 
-                          id="dropoffLoc" 
-                          value={dropoffLocation} 
-                          onChange={e => { setDropoffLocation(e.target.value); setDropoffCoordsCab(null);}}
-                          onBlur={() => dropoffLocation.trim() && geocodeAndSetMarkerCab(dropoffLocation, 'dropoff')}
-                          placeholder="Enter dropoff location" 
-                          required 
-                        />
+                         <div className="flex items-center">
+                            <Input 
+                            id="dropoffLoc" 
+                            value={dropoffLocation} 
+                            onChange={e => { 
+                                setDropoffLocation(e.target.value); 
+                                setDropoffCoordsCab(null);
+                                handleInputChangeAndFetchSuggestions(e.target.value, setDropoffSuggestions, setIsDropoffSuggestionsLoading, setShowDropoffSuggestions, dropoffDebounceTimerRef);
+                            }}
+                            onFocus={() => dropoffLocation && dropoffSuggestions.length > 0 && setShowDropoffSuggestions(true)}
+                            onBlur={() => {
+                                setTimeout(() => setShowDropoffSuggestions(false), 200);
+                                if (dropoffLocation.trim() && !dropoffCoordsCab) geocodeAndSetMarkerCab(dropoffLocation, 'dropoff');
+                            }}
+                            placeholder="Enter dropoff location" 
+                            required 
+                            className="flex-grow"
+                            />
+                            {isDropoffSuggestionsLoading && <Loader2 className="h-5 w-5 animate-spin ml-2" />}
+                        </div>
+                        {showDropoffSuggestions && dropoffSuggestions.length > 0 && (
+                          <ul className="absolute z-10 w-full bg-card border border-border rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
+                            {dropoffSuggestions.map(suggestion => (
+                              <li 
+                                key={suggestion.eLoc} 
+                                className="p-2 hover:bg-accent cursor-pointer"
+                                onMouseDown={() => handleSuggestionClick(suggestion, setDropoffLocation, setShowDropoffSuggestions, setDropoffCoordsCab, 'dropoff')}
+                              >
+                                <p className="font-medium">{suggestion.placeName}</p>
+                                <p className="text-sm text-muted-foreground">{suggestion.placeAddress}</p>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
                       </div>
                       <div>
                         <Label htmlFor="bookingDateTime">Date & Time</Label>
@@ -596,17 +757,103 @@ export default function CabAndTourPage() {
                   <div id="multiCitySection">
                     <h4 className="text-lg font-semibold mb-3 flex items-center"><Route className="mr-2 h-5 w-5 text-primary"/> Multi-City Tour</h4>
                     <form onSubmit={handleMultiCitySubmit} className="space-y-3">
-                      <div>
+                      <div className="relative">
                         <Label htmlFor="multiCity1">City 1</Label>
-                        <Input id="multiCity1" value={city1} onChange={e => setCity1(e.target.value)} placeholder="Enter first city" required />
+                        <div className="flex items-center">
+                           <Input 
+                            id="multiCity1" 
+                            value={city1} 
+                            onChange={e => {
+                                setCity1(e.target.value);
+                                handleInputChangeAndFetchSuggestions(e.target.value, setCity1Suggestions, setIsCity1LoadingSuggestions, setShowCity1Suggestions, city1DebounceTimerRef);
+                            }}
+                            onFocus={() => city1 && city1Suggestions.length > 0 && setShowCity1Suggestions(true)}
+                            onBlur={() => setTimeout(() => setShowCity1Suggestions(false), 200)}
+                            placeholder="Enter first city" 
+                            required 
+                            className="flex-grow"
+                           />
+                           {isCity1LoadingSuggestions && <Loader2 className="h-5 w-5 animate-spin ml-2" />}
+                        </div>
+                        {showCity1Suggestions && city1Suggestions.length > 0 && (
+                          <ul className="absolute z-10 w-full bg-card border border-border rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
+                            {city1Suggestions.map(suggestion => (
+                              <li 
+                                key={suggestion.eLoc} 
+                                className="p-2 hover:bg-accent cursor-pointer"
+                                onMouseDown={() => handleSuggestionClick(suggestion, setCity1, setShowCity1Suggestions)}
+                              >
+                                <p className="font-medium">{suggestion.placeName}</p>
+                                <p className="text-sm text-muted-foreground">{suggestion.placeAddress}</p>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
                       </div>
-                      <div>
+                      <div className="relative">
                         <Label htmlFor="multiCity2">City 2</Label>
-                        <Input id="multiCity2" value={city2} onChange={e => setCity2(e.target.value)} placeholder="Enter second city" required />
+                         <div className="flex items-center">
+                            <Input 
+                                id="multiCity2" 
+                                value={city2} 
+                                onChange={e => {
+                                    setCity2(e.target.value);
+                                    handleInputChangeAndFetchSuggestions(e.target.value, setCity2Suggestions, setIsCity2LoadingSuggestions, setShowCity2Suggestions, city2DebounceTimerRef);
+                                }}
+                                onFocus={() => city2 && city2Suggestions.length > 0 && setShowCity2Suggestions(true)}
+                                onBlur={() => setTimeout(() => setShowCity2Suggestions(false), 200)}
+                                placeholder="Enter second city" 
+                                required 
+                                className="flex-grow"
+                            />
+                            {isCity2LoadingSuggestions && <Loader2 className="h-5 w-5 animate-spin ml-2" />}
+                        </div>
+                        {showCity2Suggestions && city2Suggestions.length > 0 && (
+                          <ul className="absolute z-10 w-full bg-card border border-border rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
+                            {city2Suggestions.map(suggestion => (
+                              <li 
+                                key={suggestion.eLoc} 
+                                className="p-2 hover:bg-accent cursor-pointer"
+                                onMouseDown={() => handleSuggestionClick(suggestion, setCity2, setShowCity2Suggestions)}
+                              >
+                                <p className="font-medium">{suggestion.placeName}</p>
+                                <p className="text-sm text-muted-foreground">{suggestion.placeAddress}</p>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
                       </div>
-                      <div>
+                      <div className="relative">
                         <Label htmlFor="multiCity3">City 3 (Optional)</Label>
-                        <Input id="multiCity3" value={city3} onChange={e => setCity3(e.target.value)} placeholder="Enter third city" />
+                         <div className="flex items-center">
+                            <Input 
+                                id="multiCity3" 
+                                value={city3} 
+                                onChange={e => {
+                                    setCity3(e.target.value);
+                                    handleInputChangeAndFetchSuggestions(e.target.value, setCity3Suggestions, setIsCity3LoadingSuggestions, setShowCity3Suggestions, city3DebounceTimerRef);
+                                }}
+                                onFocus={() => city3 && city3Suggestions.length > 0 && setShowCity3Suggestions(true)}
+                                onBlur={() => setTimeout(() => setShowCity3Suggestions(false), 200)}
+                                placeholder="Enter third city" 
+                                className="flex-grow"
+                            />
+                            {isCity3LoadingSuggestions && <Loader2 className="h-5 w-5 animate-spin ml-2" />}
+                        </div>
+                        {showCity3Suggestions && city3Suggestions.length > 0 && (
+                          <ul className="absolute z-10 w-full bg-card border border-border rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
+                            {city3Suggestions.map(suggestion => (
+                              <li 
+                                key={suggestion.eLoc} 
+                                className="p-2 hover:bg-accent cursor-pointer"
+                                onMouseDown={() => handleSuggestionClick(suggestion, setCity3, setShowCity3Suggestions)}
+                              >
+                                <p className="font-medium">{suggestion.placeName}</p>
+                                <p className="text-sm text-muted-foreground">{suggestion.placeAddress}</p>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
                       </div>
                       <Button type="submit" className="w-full rounded-full bg-primary text-primary-foreground" disabled={isLoading && activeTab === 'multiCity'}>
                          {(isLoading && activeTab === 'multiCity') ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Route className="mr-2 h-4 w-4" />}
@@ -634,3 +881,4 @@ export default function CabAndTourPage() {
     </>
   );
 }
+
