@@ -18,7 +18,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'; // Added SheetHeader, SheetTitle
+import { usePathname, useRouter } from 'next/navigation';
+
 
 const navLinks = [
   { href: '/', label: 'Home', icon: Home },
@@ -35,26 +37,60 @@ const navLinks = [
 export default function AppHeader() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout, isAuthenticated, isLoading, isPartnerRoleSelectionPending } = useAuth();
   const [isMounted, setIsMounted] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
+  useEffect(() => {
+    if (isLoading || !isMounted) return; // Don't do anything if auth is loading or component not mounted
+
+    const userAllowedPaths = ['/dashboard', '/profile', '/settings', '/payment', '/cabs', '/trains', '/flights', '/bus', '/holiday-packages', '/insurance', '/hotels', '/house-rent'];
+    const partnerRoleSelectionPath = '/partner/select-role';
+    const homePath = '/';
+
+    if (isAuthenticated && user) {
+      if (user.primaryRole === 'partner' && isPartnerRoleSelectionPending) {
+        if (pathname !== partnerRoleSelectionPath) {
+          router.push(partnerRoleSelectionPath);
+        }
+      } else if (user.primaryRole === 'user') {
+        // If user is on home or a page not explicitly allowed for them post-login, redirect to dashboard
+        if (pathname === homePath || !userAllowedPaths.some(p => pathname.startsWith(p))) {
+           if (pathname !== '/dashboard') router.push('/dashboard');
+        }
+      } else if (user.primaryRole === 'partner' && user.partnerRole) {
+        const partnerDashboardPath = `/dashboard/${user.partnerRole}`;
+        const partnerSpecificAllowedPaths = [partnerDashboardPath, '/profile', '/settings', '/payment', '/cabs', '/trains', '/flights', '/bus', '/holiday-packages', '/insurance', '/hotels', '/house-rent'];
+         // If partner is on home, role selection, or a page not for them post-login, redirect to their specific dashboard
+        if (pathname === homePath || pathname === partnerRoleSelectionPath || !partnerSpecificAllowedPaths.some(p => pathname.startsWith(p))) {
+           if (pathname !== partnerDashboardPath) router.push(partnerDashboardPath);
+        }
+      }
+    } else { // Not authenticated
+      // If user is on a protected path and not authenticated, redirect to home
+      const protectedPaths = ['/dashboard', '/profile', '/settings', partnerRoleSelectionPath];
+      if (protectedPaths.some(p => pathname.startsWith(p))) {
+        router.push(homePath);
+      }
+    }
+  }, [isAuthenticated, user, isLoading, router, pathname, isMounted, isPartnerRoleSelectionPending]);
+
+
   const handleLogout = () => {
     logout();
   };
 
-  // Placeholder for theme toggle
   const toggleTheme = () => {
-    // In a real app, this would toggle dark/light mode
     console.log("Theme toggled");
     alert("Theme toggle functionality not implemented in this version.");
   };
 
   if (!isMounted) {
-    // Render a placeholder or null during SSR to avoid hydration mismatch for auth state
     return (
       <header className="sticky-header p-4 border-b">
         <div className="container mx-auto flex items-center justify-between">
@@ -80,7 +116,6 @@ export default function AppHeader() {
             <Image src="https://placehold.co/40x40.png" alt="My Apps Logo" width={40} height={40} data-ai-hint="logo abstract" />
           </Link>
 
-          {/* Desktop Navigation */}
           <nav className="main-nav hidden lg:flex">
             <ul className="flex items-center space-x-1">
               {navLinks.map((item) => (
@@ -110,7 +145,7 @@ export default function AppHeader() {
                       className="rounded-full"
                       data-ai-hint="avatar person"
                     />
-                    <span>{user.name}</span>
+                    <span>{user.name || "User"}</span>
                     <ChevronDown size={16} />
                   </Button>
                 </DropdownMenuTrigger>
@@ -139,7 +174,6 @@ export default function AppHeader() {
             )}
           </div>
           
-          {/* Mobile Navigation Trigger */}
           <div className="lg:hidden">
             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <SheetTrigger asChild>
@@ -149,6 +183,9 @@ export default function AppHeader() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+                <SheetHeader>
+                  <SheetTitle>Navigation Menu</SheetTitle>
+                </SheetHeader>
                 <nav className="flex flex-col space-y-4 mt-8">
                   {navLinks.map((item) => (
                     <Link
