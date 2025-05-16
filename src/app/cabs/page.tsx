@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { UploadCloud, DownloadCloud, Trash2, Route, MapPin, Building, Navigation, Edit3, Loader2, ListX } from 'lucide-react';
+import { UploadCloud, DownloadCloud, Trash2, Route, MapPin, Building, Navigation, Edit3, Loader2 } from 'lucide-react';
 
 
 // Declare mappls for MapmyIndia
@@ -163,7 +163,7 @@ export default function CabAndTourPage() {
     if (!mapInstanceRef.current || !window.mappls) return;
 
     try {
-      const geocodeURL = `https://atlas.mapmyindia.com/api/places/geocode?address=${encodeURIComponent(stopName)}&key=${MAP_MY_INDIA_API_KEY}`;
+      const geocodeURL = `https://atlas.mapmyindia.com/api/places/geocode?address=${encodeURIComponent(stopName)}&key=${MAP_MY_INDIA_API_KEY}&country=IN`;
       const response = await fetch(geocodeURL);
 
       if (!response.ok) {
@@ -914,5 +914,7 @@ export default function CabAndTourPage() {
     </>
   );
 }
+
+    
 
     
