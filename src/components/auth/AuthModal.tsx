@@ -63,13 +63,13 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginIdentifier || !loginPassword) {
-      toast({ title: "Error", description: "Please enter both email/phone and password.", variant: "destructive" });
+      toast({ title: "Error", description: "Please enter both email and password.", variant: "destructive" });
       return;
     }
     setIsSubmitting(true);
     try {
       await auth.login(loginIdentifier, loginPassword);
-      // Success toast and redirection are handled by AuthContext and AppHeader
+      // Success toast is handled by AuthContext or AppHeader redirection logic now
       onClose();
     } catch (error: any) {
       toast({ title: "Login Failed", description: error.message || "Invalid credentials or server error.", variant: "destructive" });
@@ -93,8 +93,8 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
       const primaryRoleToSet = isPartnerSignup ? 'partner' : 'user';
       await auth.signup(signupEmail, signupPassword, signupName, primaryRoleToSet);
       toast({ title: "Signup Successful!", description: "Your account has been created. Redirecting..." });
-      onClose(); // Close modal, redirection will be handled by AppHeader based on AuthContext
-      // router.push('/'); // Explicitly go to home, AppHeader logic will then redirect
+      onClose(); 
+      router.push('/'); // Navigate to home, AppHeader will handle further redirection
     } catch (error: any) {
       console.error("Signup error in modal:", error);
       toast({ title: "Signup Failed", description: error.message || "Could not create account.", variant: "destructive" });
@@ -156,7 +156,9 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
   const renderSignupForm = () => (
     <form onSubmit={handleSignupSubmit} className="space-y-4">
-      {/* Removed DialogHeader for Create Account title */}
+      <DialogHeader>
+        <DialogTitle className="text-2xl text-center">Sign Up</DialogTitle>
+      </DialogHeader>
       <div>
         <Label htmlFor="signupName">Full Name</Label>
         <Input id="signupName" type="text" placeholder="Full Name" value={signupName} onChange={(e) => setSignupName(e.target.value)} required />
