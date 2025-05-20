@@ -15,12 +15,14 @@ import { useRouter } from 'next/navigation';
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialTab?: AuthFormType;
+  loginIntent?: 'user' | 'partner';
 }
 
 type AuthFormType = 'login' | 'signup' | 'reset';
 
-export function AuthModal({ isOpen, onClose }: AuthModalProps) {
-  const [activeTab, setActiveTab] = useState<AuthFormType>('login');
+export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent = 'user' }: AuthModalProps) {
+  const [activeTab, setActiveTab] = useState<AuthFormType>(initialTab);
   const [showPassword, setShowPassword] = useState(false);
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -36,25 +38,27 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
-  const [isPartnerSignup, setIsPartnerSignup] = useState(false); // For partner signup
+  const [isPartnerSignup, setIsPartnerSignup] = useState(false);
+  const [attemptingPartnerLogin, setAttemptingPartnerLogin] = useState(false); // For partner login intent
   const [resetEmail, setResetEmail] = useState('');
   
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      setActiveTab('login'); // Reset to login tab when modal opens
+      setActiveTab(initialTab);
       setLoginIdentifier('');
       setLoginPassword('');
       setSignupName('');
       setSignupEmail('');
       setSignupPassword('');
       setSignupConfirmPassword('');
-      setIsPartnerSignup(false);
+      setIsPartnerSignup(loginIntent === 'partner'); // Pre-fill based on intent for signup
+      setAttemptingPartnerLogin(loginIntent === 'partner'); // Pre-fill based on intent for login
       setResetEmail('');
       setIsSubmitting(false);
     }
-  }, [isOpen]);
+  }, [isOpen, initialTab, loginIntent]);
 
   const togglePasswordVisibility = () => setShowPassword(!showPassword);
   const toggleSignupPasswordVisibility = () => setShowSignupPassword(!showSignupPassword);
@@ -69,8 +73,9 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setIsSubmitting(true);
     try {
       await auth.login(loginIdentifier, loginPassword);
-      // Success toast is handled by AuthContext or AppHeader redirection logic now
+      toast({ title: "Login Successful!", description: "Welcome back!" });
       onClose();
+      // Redirection is handled by AppHeader based on AuthContext
     } catch (error: any) {
       toast({ title: "Login Failed", description: error.message || "Invalid credentials or server error.", variant: "destructive" });
     } finally {
@@ -91,10 +96,17 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setIsSubmitting(true);
     try {
       const primaryRoleToSet = isPartnerSignup ? 'partner' : 'user';
-      await auth.signup(signupEmail, signupPassword, signupName, primaryRoleToSet);
-      toast({ title: "Signup Successful!", description: "Your account has been created. Redirecting..." });
-      onClose(); 
-      router.push('/'); // Navigate to home, AppHeader will handle further redirection
+      const newUser = await auth.signup(signupEmail, signupPassword, signupName, primaryRoleToSet);
+
+      if (newUser) {
+        toast({ title: "Signup Successful!", description: "Your account has been created. Redirecting..." });
+        onClose();
+        // Explicitly navigate to home. AppHeader will handle further redirection.
+        router.push('/'); 
+      } else {
+        // This case should ideally not be reached if signup throws an error for failures
+        toast({ title: "Signup Failed", description: "Could not create account. Please try again.", variant: "destructive" });
+      }
     } catch (error: any) {
       console.error("Signup error in modal:", error);
       toast({ title: "Signup Failed", description: error.message || "Could not create account.", variant: "destructive" });
@@ -138,6 +150,15 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
             {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
           </Button>
         </div>
+      </div>
+      <div className="flex items-center space-x-2">
+        <Checkbox 
+          id="attemptPartnerLogin" 
+          checked={attemptingPartnerLogin} 
+          onCheckedChange={(checked) => setAttemptingPartnerLogin(checked as boolean)} />
+        <Label htmlFor="attemptPartnerLogin" className="text-sm font-normal">
+          Login as Partner
+        </Label>
       </div>
       <Button type="submit" className="w-full" disabled={isSubmitting || auth.isLoading}>
         {(isSubmitting || auth.isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -186,7 +207,10 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
         </div>
       </div>
       <div className="flex items-center space-x-2">
-        <Checkbox id="partnerSignup" checked={isPartnerSignup} onCheckedChange={(checked) => setIsPartnerSignup(checked as boolean)} />
+        <Checkbox 
+          id="partnerSignup" 
+          checked={isPartnerSignup} 
+          onCheckedChange={(checked) => setIsPartnerSignup(checked as boolean)} />
         <Label htmlFor="partnerSignup" className="text-sm font-normal">
           Sign up as a Partner (e.g., Cab Driver, Travel Agent)
         </Label>
@@ -226,7 +250,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px] bg-background/70">
+      <DialogContent className="sm:max-w-[425px] bg-background/70"> {/* Adjusted for 70% opacity */}
         <div className="auth-tabs flex justify-center mb-6 border-b border-border/50">
           <button
             className={`tab-btn px-4 py-2 text-lg font-medium ${activeTab === 'login' ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'}`}
