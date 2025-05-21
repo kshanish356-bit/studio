@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect, useRef } from 'react';
 import {
-  Home, Plane, Train, Hotel, Bus, CarTaxiFront, Briefcase, Shield, Moon, User, ChevronDown, UserCircle, Settings, LogOut, Menu, Building
+  Home, Plane, Train, Hotel, Bus, CarTaxiFront, Briefcase, Shield, Moon, User, ChevronDown, UserCircle, Settings, LogOut, Menu, Building, Users
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AuthModal } from '@/components/auth/AuthModal';
@@ -18,7 +18,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'; // Added SheetHeader, SheetTitle
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { usePathname, useRouter } from 'next/navigation';
 
 
@@ -36,6 +36,8 @@ const navLinks = [
 
 export default function AppHeader() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalInitialTab, setAuthModalInitialTab] = useState<'login' | 'signup'>('login');
+  const [loginIntent, setLoginIntent] = useState<'user' | 'partner'>('user');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, logout, isAuthenticated, isLoading, isPartnerRoleSelectionPending } = useAuth();
   const [isMounted, setIsMounted] = useState(false);
@@ -49,33 +51,41 @@ export default function AppHeader() {
   useEffect(() => {
     if (isLoading || !isMounted) return; // Don't do anything if auth is loading or component not mounted
 
-    const userAllowedPaths = ['/dashboard', '/profile', '/settings', '/payment', '/cabs', '/trains', '/flights', '/bus', '/holiday-packages', '/insurance', '/hotels', '/house-rent'];
-    const partnerRoleSelectionPath = '/partner/select-role';
-    const homePath = '/';
-
+    // Redirect authenticated users to appropriate dashboards or role selection
     if (isAuthenticated && user) {
       if (user.primaryRole === 'partner' && isPartnerRoleSelectionPending) {
-        if (pathname !== partnerRoleSelectionPath) {
-          router.push(partnerRoleSelectionPath);
+        if (pathname !== '/partner/select-role') {
+          router.push('/partner/select-role');
         }
       } else if (user.primaryRole === 'user') {
-        // If user is on home or a page not explicitly allowed for them post-login, redirect to dashboard
-        if (pathname === homePath || !userAllowedPaths.some(p => pathname.startsWith(p))) {
-           if (pathname !== '/dashboard') router.push('/dashboard');
+        const userAllowedPaths = [
+          '/dashboard', '/profile', '/settings', '/payment',
+          '/cabs', '/trains', '/flights', '/bus', '/holiday-packages',
+          '/insurance', '/hotels', '/house-rent'
+        ];
+        // If user is authenticated and on a page not in the allowed list (e.g. landing on '/' after login/signup), redirect to dashboard.
+        if (!userAllowedPaths.some(p => pathname.startsWith(p))) {
+          router.push('/dashboard');
         }
       } else if (user.primaryRole === 'partner' && user.partnerRole) {
-        const partnerDashboardPath = `/dashboard/${user.partnerRole}`;
-        const partnerSpecificAllowedPaths = [partnerDashboardPath, '/profile', '/settings', '/payment', '/cabs', '/trains', '/flights', '/bus', '/holiday-packages', '/insurance', '/hotels', '/house-rent'];
+        const partnerDashboardPath = `/dashboard/${user.partnerRole.toLowerCase().replace(/\s+/g, '-')}`;
+        const partnerSpecificAllowedPaths = [
+          partnerDashboardPath, '/profile', '/settings', '/payment',
+          '/cabs', '/trains', '/flights', '/bus', '/holiday-packages',
+          '/insurance', '/hotels', '/house-rent'
+        ];
          // If partner is on home, role selection, or a page not for them post-login, redirect to their specific dashboard
-        if (pathname === homePath || pathname === partnerRoleSelectionPath || !partnerSpecificAllowedPaths.some(p => pathname.startsWith(p))) {
-           if (pathname !== partnerDashboardPath) router.push(partnerDashboardPath);
+        if (pathname === '/' || pathname === '/partner/select-role' || !partnerSpecificAllowedPaths.some(p => pathname.startsWith(p))) {
+           if (pathname !== partnerDashboardPath) { // Avoid redirect loop if already there
+             router.push(partnerDashboardPath);
+           }
         }
       }
-    } else { // Not authenticated
+    } else if (!isAuthenticated && !isLoading) { // Not authenticated
       // If user is on a protected path and not authenticated, redirect to home
-      const protectedPaths = ['/dashboard', '/profile', '/settings', partnerRoleSelectionPath];
+      const protectedPaths = ['/dashboard', '/profile', '/settings', '/partner/select-role'];
       if (protectedPaths.some(p => pathname.startsWith(p))) {
-        router.push(homePath);
+        router.push('/');
       }
     }
   }, [isAuthenticated, user, isLoading, router, pathname, isMounted, isPartnerRoleSelectionPending]);
@@ -85,20 +95,45 @@ export default function AppHeader() {
     logout();
   };
 
-  const toggleTheme = () => {
-    console.log("Theme toggled");
-    alert("Theme toggle functionality not implemented in this version.");
+  const openAuthModal = (tab: 'login' | 'signup', intent: 'user' | 'partner' = 'user') => {
+    setAuthModalInitialTab(tab);
+    setLoginIntent(intent);
+    setIsAuthModalOpen(true);
   };
+
+  const toggleTheme = () => {
+    // This is a placeholder. Real theme toggling would involve updating context/localStorage and html class.
+    const currentTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+    if (currentTheme === 'dark') {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    } else {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    }
+  };
+  
+  useEffect(() => {
+    // Apply theme from localStorage on mount
+    const storedTheme = localStorage.getItem('theme');
+    if (storedTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
 
   if (!isMounted) {
     return (
-      <header className="sticky-header p-4 border-b">
+      <header className="sticky top-0 z-50 p-4 border-b bg-background shadow-md">
         <div className="container mx-auto flex items-center justify-between">
           <div className="flex flex-col items-center space-y-1">
              <span className="text-sm font-bold text-primary">My Apps</span>
             <Image src="https://placehold.co/40x40.png" alt="My Apps Logo" width={40} height={40} data-ai-hint="logo abstract" />
           </div>
           <div className="animate-pulse flex items-center space-x-2">
+            <div className="h-8 w-20 bg-muted rounded"></div>
             <div className="h-8 w-20 bg-muted rounded"></div>
             <div className="h-8 w-8 bg-muted rounded-full"></div>
           </div>
@@ -109,7 +144,7 @@ export default function AppHeader() {
 
   return (
     <>
-      <header className="sticky-header p-4 border-b">
+      <header className="sticky top-0 z-50 p-4 border-b bg-background shadow-md">
         <div className="container mx-auto flex items-center justify-between">
           <Link href="/" className="flex flex-col items-center space-y-1">
             <span className="text-sm font-bold text-primary">My Apps</span>
@@ -168,9 +203,14 @@ export default function AppHeader() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button onClick={() => setIsAuthModalOpen(true)}>
-                <User className="h-4 w-4" /> Login / Sign Up
-              </Button>
+              <>
+                <Button onClick={() => openAuthModal('login', 'user')}>
+                  <User className="h-4 w-4" /> Login / Sign Up
+                </Button>
+                <Button variant="outline" onClick={() => openAuthModal('login', 'partner')}>
+                  <Users className="h-4 w-4" /> Partner Login
+                </Button>
+              </>
             )}
           </div>
           
@@ -215,9 +255,14 @@ export default function AppHeader() {
                       </Button>
                     </>
                   ) : (
-                     <Button onClick={() => { setIsAuthModalOpen(true); setIsMobileMenuOpen(false); }} className="w-full justify-start p-2">
+                    <>
+                     <Button onClick={() => { openAuthModal('login', 'user'); setIsMobileMenuOpen(false); }} className="w-full justify-start p-2">
                        <User className="mr-2 h-5 w-5" /> Login / Sign Up
                      </Button>
+                     <Button variant="outline" onClick={() => { openAuthModal('login', 'partner'); setIsMobileMenuOpen(false); }} className="w-full justify-start p-2">
+                       <Users className="mr-2 h-5 w-5" /> Partner Login
+                     </Button>
+                    </>
                   )}
                   <Button variant="ghost" onClick={() => { toggleTheme(); setIsMobileMenuOpen(false); }} className="w-full justify-start p-2">
                     <Moon className="mr-2 h-5 w-5" /> Toggle Theme
@@ -228,7 +273,16 @@ export default function AppHeader() {
           </div>
         </div>
       </header>
-      {isAuthModalOpen && <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />}
+      {isAuthModalOpen && (
+        <AuthModal 
+          isOpen={isAuthModalOpen} 
+          onClose={() => setIsAuthModalOpen(false)} 
+          initialTab={authModalInitialTab}
+          loginIntent={loginIntent}
+        />
+      )}
     </>
   );
 }
+
+    
