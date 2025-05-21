@@ -2,7 +2,7 @@
 "use client";
 
 import type React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,22 +10,20 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Sun, Moon, Bell, ChevronDown, LogOut, Settings as SettingsIcon, User as UserIcon, DollarSign, Briefcase, FileText, CheckCircle, Download } from 'lucide-react';
+import { Sun, Moon, Bell, ChevronDown, LogOut, Settings as SettingsIcon, User as UserIcon, DollarSign, Briefcase, FileText, CheckCircle, Download, Loader2 } from 'lucide-react';
 
-// Import for file downloads
 import jsPDF from 'jspdf';
-import 'jspdf-autotable'; // Import for the autoTable plugin
+import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 
-// Extend jsPDF with autoTable - this is a common way to type it for TypeScript
 declare module 'jspdf' {
   interface jsPDF {
     autoTable: (options: any) => jsPDF;
   }
 }
 
-
 interface Ride {
+  id: string;
   from: string;
   to: string;
   time: string;
@@ -33,24 +31,40 @@ interface Ride {
   fare?: string;
 }
 
-const upcomingRidesData: Ride[] = [
-  { from: 'Bhopal New Market', to: 'Indore Airport', time: '10:00 AM', status: 'Accepted', fare: '₹1800' },
-  { from: 'MP Nagar Zone 2', to: 'Bhopal Railway Station', time: '12:30 PM', status: 'Pending', fare: '₹250' },
-  { from: 'Airport Road', to: 'City Center Mall', time: '03:15 PM', status: 'Ongoing', fare: '₹300' },
-  { from: 'Van Vihar National Park', to: 'Upper Lake View Point', time: '05:00 PM', status: 'Completed', fare: '₹150' },
-];
-
-const rideHistoryData: Ride[] = [
- { from: 'Lake View', to: 'DB Mall', time: 'Yesterday 08:00 PM', status: 'Completed', fare: '₹220' },
- { from: 'ISBT Bhopal', to: 'Kolar Road', time: 'Two days ago 11:00 AM', status: 'Completed', fare: '₹450' },
-];
-
-
 export default function CabDriverDashboardPage() {
   const { toast } = useToast();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isAvailable, setIsAvailable] = useState(true);
   const [currentYear, setCurrentYear] = useState<number | null>(null);
+
+  const [upcomingRides, setUpcomingRides] = useState<Ride[]>([]);
+  const [rideHistory, setRideHistory] = useState<Ride[]>([]);
+  const [isLoadingRides, setIsLoadingRides] = useState(true);
+  const [errorRides, setErrorRides] = useState<string | null>(null);
+  const [isUpdatingRide, setIsUpdatingRide] = useState<string | null>(null); // Stores ID of ride being updated
+
+  const fetchDriverRides = useCallback(async () => {
+    setIsLoadingRides(true);
+    setErrorRides(null);
+    try {
+      const response = await fetch('/api/driver/rides');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch rides: ${response.statusText}`);
+      }
+      const data: Ride[] = await response.json();
+      
+      const activeStatuses: Ride['status'][] = ['Pending', 'Accepted', 'Ongoing'];
+      setUpcomingRides(data.filter(ride => activeStatuses.includes(ride.status)).sort((a,b) => new Date(a.time).getTime() - new Date(b.time).getTime() || a.time.localeCompare(b.time) )); // Basic sort
+      setRideHistory(data.filter(ride => !activeStatuses.includes(ride.status)).sort((a,b) => new Date(b.time).getTime() - new Date(a.time).getTime() || b.time.localeCompare(a.time) )); // Basic sort
+      
+    } catch (error) {
+      console.error("Error fetching rides:", error);
+      setErrorRides((error as Error).message);
+      toast({ title: "Error Loading Rides", description: (error as Error).message, variant: "destructive" });
+    } finally {
+      setIsLoadingRides(false);
+    }
+  }, [toast]);
 
   useEffect(() => {
     setCurrentYear(new Date().getFullYear());
@@ -61,7 +75,8 @@ export default function CabDriverDashboardPage() {
     } else {
       document.documentElement.classList.remove('dark');
     }
-  }, []);
+    fetchDriverRides();
+  }, [fetchDriverRides]);
 
   const toggleTheme = () => {
     setIsDarkMode(prev => {
@@ -86,23 +101,69 @@ export default function CabDriverDashboardPage() {
     });
   };
 
+  const handleUpdateRideStatus = async (rideId: string, newStatus: Ride['status']) => {
+    setIsUpdatingRide(rideId);
+    try {
+      const response = await fetch('/api/driver/rides', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rideId, newStatus }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed to update ride status: ${response.statusText}`);
+      }
+      toast({ title: "Ride Status Updated", description: `Ride ${rideId} is now ${newStatus}.` });
+      fetchDriverRides(); // Refresh ride lists
+    } catch (error) {
+      console.error("Error updating ride status:", error);
+      toast({ title: "Update Failed", description: (error as Error).message, variant: "destructive" });
+    } finally {
+      setIsUpdatingRide(null);
+    }
+  };
+
+  const getButtonForRideStatus = (ride: Ride) => {
+    const isUpdatingThisRide = isUpdatingRide === ride.id;
+    switch (ride.status) {
+      case 'Pending':
+        return <Button variant="secondary" size="sm" onClick={() => handleUpdateRideStatus(ride.id, 'Accepted')} disabled={isUpdatingThisRide}>{isUpdatingThisRide ? <Loader2 className="animate-spin" /> : "Accept"}</Button>;
+      case 'Accepted':
+        return <Button variant="default" size="sm" onClick={() => handleUpdateRideStatus(ride.id, 'Ongoing')} disabled={isUpdatingThisRide}>{isUpdatingThisRide ? <Loader2 className="animate-spin" /> : "Start Ride"}</Button>;
+      case 'Ongoing':
+        return <Button variant="destructive" size="sm" onClick={() => handleUpdateRideStatus(ride.id, 'Completed')} disabled={isUpdatingThisRide}>{isUpdatingThisRide ? <Loader2 className="animate-spin" /> : "End Ride"}</Button>;
+      default:
+        return null;
+    }
+  };
+  
+  const dataForDownload = upcomingRides.length > 0 ? upcomingRides : rideHistory; // Or combine them
+
   const handleDownloadPDF = () => {
+    if (dataForDownload.length === 0) {
+      toast({ title: 'No Data', description: 'No rides available to download.', variant: 'destructive' });
+      return;
+    }
     const doc = new jsPDF();
-    doc.text("Upcoming Rides", 14, 16);
+    doc.text("Driver Rides", 14, 16);
     doc.autoTable({
       head: [['From', 'To', 'Time', 'Status', 'Fare']],
-      body: upcomingRidesData.map(ride => [ride.from, ride.to, ride.time, ride.status, ride.fare || 'N/A']),
+      body: dataForDownload.map(ride => [ride.from, ride.to, ride.time, ride.status, ride.fare || 'N/A']),
       startY: 20,
       theme: 'grid',
       styles: { fontSize: 10, cellPadding: 2 },
-      headStyles: { fillColor: [22, 160, 133] }, // Example primary color
+      headStyles: { fillColor: [22, 160, 133] },
     });
-    doc.save('upcoming_rides.pdf');
-    toast({ title: 'PDF Downloaded', description: 'Upcoming rides PDF has been generated.' });
+    doc.save('driver_rides.pdf');
+    toast({ title: 'PDF Downloaded', description: 'Rides PDF has been generated.' });
   };
 
   const handleDownloadExcel = () => {
-    const worksheet = XLSX.utils.json_to_sheet(upcomingRidesData.map(ride => ({
+     if (dataForDownload.length === 0) {
+      toast({ title: 'No Data', description: 'No rides available to download.', variant: 'destructive' });
+      return;
+    }
+    const worksheet = XLSX.utils.json_to_sheet(dataForDownload.map(ride => ({
       From: ride.from,
       To: ride.to,
       Time: ride.time,
@@ -110,15 +171,13 @@ export default function CabDriverDashboardPage() {
       Fare: ride.fare || 'N/A',
     })));
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Upcoming Rides");
-    XLSX.writeFile(workbook, "upcoming_rides.xlsx");
-    toast({ title: 'Excel Downloaded', description: 'Upcoming rides Excel file has been generated.' });
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Driver Rides");
+    XLSX.writeFile(workbook, "driver_rides.xlsx");
+    toast({ title: 'Excel Downloaded', description: 'Rides Excel file has been generated.' });
   };
-
 
   return (
     <div className="flex min-h-screen bg-secondary/50 dark:bg-background">
-      {/* Sidebar */}
       <aside className="w-64 bg-card text-card-foreground p-6 shadow-lg flex flex-col space-y-6 fixed h-full">
         <div className="text-center">
           <Image
@@ -129,7 +188,7 @@ export default function CabDriverDashboardPage() {
             className="rounded-full mx-auto mb-3 border-2 border-primary"
             data-ai-hint="driver avatar"
           />
-          <h3 className="text-xl font-semibold">John Doe</h3>
+          <h3 className="text-xl font-semibold">John Doe</h3> {/* TODO: Dynamic name */}
           <p className="text-sm text-muted-foreground">Cab Driver</p>
         </div>
 
@@ -148,12 +207,11 @@ export default function CabDriverDashboardPage() {
             <Label htmlFor="toggle-availability" className="text-sm">Availability</Label>
             <CheckCircle className={`h-5 w-5 ${isAvailable ? 'text-green-500' : 'text-red-500'}`} />
           </div>
-          <Button variant="outline" className="w-full"><LogOut className="mr-2 h-4 w-4" /> Logout</Button>
+          <Button variant="outline" className="w-full"><LogOut className="mr-2 h-4 w-4" /> Logout</Button> {/* TODO: Logout action */}
         </div>
       </aside>
 
-      {/* Main Dashboard Content */}
-      <main className="flex-grow p-8 ml-64 overflow-y-auto"> {/* Added ml-64 for fixed sidebar */}
+      <main className="flex-grow p-8 ml-64 overflow-y-auto">
         <header className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-foreground">Driver Dashboard</h1>
           <div className="flex items-center space-x-4">
@@ -163,11 +221,12 @@ export default function CabDriverDashboardPage() {
             <Button variant="ghost" size="icon" aria-label="Notifications">
               <Bell className="h-5 w-5" />
             </Button>
+            {/* TODO: Replace with actual DropdownMenu from ShadCN */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center space-x-2">
                   <UserIcon className="h-5 w-5" />
-                  <span>John Doe</span>
+                  <span>John Doe</span> {/* TODO: Dynamic name */}
                   <ChevronDown className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -175,22 +234,22 @@ export default function CabDriverDashboardPage() {
                 <DropdownMenuItem>Profile</DropdownMenuItem>
                 <DropdownMenuItem>Settings</DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Logout</DropdownMenuItem>
+                <DropdownMenuItem>Logout</DropdownMenuItem> {/* TODO: Logout action */}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </header>
 
-        {/* Stats Section */}
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* Static cards for now, can be made dynamic */}
           <Card className="shadow-md">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Rides</CardTitle>
               <Briefcase className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">45</div>
-              <p className="text-xs text-muted-foreground">+2 since last week</p>
+              <div className="text-2xl font-bold">{rideHistory.length + upcomingRides.filter(r => r.status === 'Ongoing').length}</div>
+              <p className="text-xs text-muted-foreground">Completed & Ongoing</p>
             </CardContent>
           </Card>
           <Card className="shadow-md">
@@ -199,7 +258,7 @@ export default function CabDriverDashboardPage() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">₹1,200</div>
+              <div className="text-2xl font-bold">₹1,200</div> {/* Placeholder */}
               <p className="text-xs text-muted-foreground">+5% from yesterday</p>
             </CardContent>
           </Card>
@@ -209,7 +268,7 @@ export default function CabDriverDashboardPage() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">₹7,500</div>
+              <div className="text-2xl font-bold">₹7,500</div> {/* Placeholder */}
               <p className="text-xs text-muted-foreground">Target: ₹10,000</p>
             </CardContent>
           </Card>
@@ -219,13 +278,12 @@ export default function CabDriverDashboardPage() {
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-destructive">1</div>
+              <div className="text-2xl font-bold text-destructive">1</div> {/* Placeholder */}
               <p className="text-xs text-muted-foreground">RC Book Expiring</p>
             </CardContent>
           </Card>
         </section>
 
-        {/* Map Section */}
         <section className="mb-8">
           <Card className="shadow-md">
             <CardHeader>
@@ -239,11 +297,10 @@ export default function CabDriverDashboardPage() {
           </Card>
         </section>
 
-        {/* Rides Table Section */}
         <section>
           <Card className="shadow-md">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Upcoming Rides</CardTitle>
+              <CardTitle>Upcoming & Active Rides</CardTitle>
               <div className="flex space-x-2">
                 <Button variant="outline" size="sm" onClick={handleDownloadPDF}>
                   <Download className="mr-2 h-4 w-4" /> PDF
@@ -254,58 +311,73 @@ export default function CabDriverDashboardPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>From</TableHead>
-                    <TableHead>To</TableHead>
-                    <TableHead>Time</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Fare</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {upcomingRidesData.length > 0 ? upcomingRidesData.map((ride, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{ride.from}</TableCell>
-                      <TableCell>{ride.to}</TableCell>
-                      <TableCell>{ride.time}</TableCell>
-                      <TableCell>
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          ride.status === 'Accepted' ? 'bg-blue-100 text-blue-700' :
-                          ride.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-                          ride.status === 'Ongoing' ? 'bg-green-100 text-green-700' :
-                          ride.status === 'Completed' ? 'bg-gray-100 text-gray-700' :
-                          'bg-red-100 text-red-700' // Cancelled
-                        }`}>
-                          {ride.status}
-                        </span>
-                      </TableCell>
-                      <TableCell>{ride.fare}</TableCell>
-                      <TableCell className="text-right">
-                        {ride.status === 'Accepted' && <Button variant="default" size="sm">Start Ride</Button>}
-                        {ride.status === 'Pending' && <Button variant="secondary" size="sm">Accept</Button>}
-                         {ride.status === 'Ongoing' && <Button variant="destructive" size="sm">End Ride</Button>}
-                      </TableCell>
-                    </TableRow>
-                  )) : (
+              {isLoadingRides ? (
+                <div className="flex justify-center items-center py-10">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="ml-2">Loading rides...</p>
+                </div>
+              ) : errorRides ? (
+                <p className="text-destructive text-center py-10">Error loading rides: {errorRides}</p>
+              ) : (
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground">No upcoming rides.</TableCell>
+                      <TableHead>From</TableHead>
+                      <TableHead>To</TableHead>
+                      <TableHead>Time</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Fare</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
                     </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {upcomingRides.length > 0 ? upcomingRides.map((ride) => (
+                      <TableRow key={ride.id}>
+                        <TableCell>{ride.from}</TableCell>
+                        <TableCell>{ride.to}</TableCell>
+                        <TableCell>{ride.time}</TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                            ride.status === 'Accepted' ? 'bg-blue-100 text-blue-700 dark:bg-blue-700 dark:text-blue-100' :
+                            ride.status === 'Pending' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-600 dark:text-yellow-100' :
+                            ride.status === 'Ongoing' ? 'bg-green-100 text-green-700 dark:bg-green-700 dark:text-green-100' :
+                            ride.status === 'Completed' ? 'bg-gray-100 text-gray-700 dark:bg-gray-600 dark:text-gray-100' :
+                            'bg-red-100 text-red-700 dark:bg-red-700 dark:text-red-100'
+                          }`}>
+                            {ride.status}
+                          </span>
+                        </TableCell>
+                        <TableCell>{ride.fare}</TableCell>
+                        <TableCell className="text-right">
+                          {getButtonForRideStatus(ride)}
+                        </TableCell>
+                      </TableRow>
+                    )) : (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-muted-foreground">No upcoming or active rides.</TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </section>
-         {/* Ride History Section - Placeholder */}
+
         <section className="mt-8">
             <Card className="shadow-md">
                 <CardHeader>
                     <CardTitle>Ride History</CardTitle>
                 </CardHeader>
                 <CardContent>
+                  {isLoadingRides ? (
+                    <div className="flex justify-center items-center py-10">
+                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                       <p className="ml-2">Loading ride history...</p>
+                    </div>
+                  ) : errorRides ? (
+                    <p className="text-destructive text-center py-10">Error loading ride history: {errorRides}</p>
+                  ) : (
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -317,21 +389,29 @@ export default function CabDriverDashboardPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {rideHistoryData.map((ride, index) => (
-                                <TableRow key={index}>
+                            {rideHistory.length > 0 ? rideHistory.map((ride) => (
+                                <TableRow key={ride.id}>
                                     <TableCell>{ride.from}</TableCell>
                                     <TableCell>{ride.to}</TableCell>
                                     <TableCell>{ride.time}</TableCell>
                                     <TableCell>
-                                        <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700">
+                                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                          ride.status === 'Completed' ? 'bg-gray-100 text-gray-700 dark:bg-gray-600 dark:text-gray-100' :
+                                          'bg-red-100 text-red-700 dark:bg-red-700 dark:text-red-100' // Cancelled
+                                        }`}>
                                             {ride.status}
                                         </span>
                                     </TableCell>
                                     <TableCell>{ride.fare}</TableCell>
                                 </TableRow>
-                            ))}
+                            )) : (
+                               <TableRow>
+                                    <TableCell colSpan={5} className="text-center text-muted-foreground">No ride history found.</TableCell>
+                                </TableRow>
+                            )}
                         </TableBody>
                     </Table>
+                  )}
                 </CardContent>
             </Card>
         </section>
@@ -340,11 +420,10 @@ export default function CabDriverDashboardPage() {
   );
 }
 
-
-// Helper for DropdownMenu - replace with actual ShadCN if needed later or integrate into main component
+// Placeholder DropdownMenu components for type-checking if not fully set up globally
+// In a real setup, these would be imported from '@/components/ui/dropdown-menu'
 const DropdownMenu: React.FC<{children: React.ReactNode}> = ({children}) => <div>{children}</div>;
 const DropdownMenuTrigger: React.FC<{children: React.ReactNode, asChild?: boolean}> = ({children}) => <div>{children}</div>;
-const DropdownMenuContent: React.FC<{children: React.ReactNode, align?: string}> = ({children}) => <div style={{position: 'absolute', background: 'white', border: '1px solid #ccc', padding: '5px', display:'none'}}>{children}</div>; // basic placeholder
+const DropdownMenuContent: React.FC<{children: React.ReactNode, align?: string}> = ({children}) => <div style={{position: 'absolute', right: 0, background: 'var(--card)', border: '1px solid var(--border)', padding: '5px', zIndex: 50, display:'none'}}>{children}</div>;
 const DropdownMenuItem: React.FC<{children: React.ReactNode}> = ({children}) => <div style={{padding: '5px', cursor: 'pointer'}}>{children}</div>;
 const DropdownMenuSeparator: React.FC = () => <hr />;
-
