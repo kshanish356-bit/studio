@@ -75,13 +75,8 @@ export default function PaymentPage() {
   const [selectedNetBanking, setSelectedNetBanking] = useState<string | undefined>();
   const [selectedWallet, setSelectedWallet] = useState<string | undefined>();
   const [selectedCBDC, setSelectedCBDC] = useState<string | undefined>();
-  const [currentYear, setCurrentYear] = useState<number | null>(null);
 
   const { toast } = useToast();
-
-  useEffect(() => {
-    setCurrentYear(new Date().getFullYear());
-  }, []);
 
   const sidebarLinks = [
     { id: 'quikPay', label: 'QuikPay', icon: ShieldCheck, target: 'quikPay' as PaymentSection },
@@ -118,8 +113,8 @@ export default function PaymentPage() {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_IR7GZGbUKziGNs", // Use env variable or default
         amount: 10000, // Amount in paise (e.g., 100.00 INR)
         currency: "INR",
-        name: "TravelEase Simplified",
-        description: "CBDC Payment for TravelEase",
+        name: "My Apps", // Updated name
+        description: "CBDC Payment for My Apps", // Updated name
         // order_id: "order_xyz_from_backend", // This should come from your backend
         handler: async function (response: any) {
             toast({ title: "Payment Successful", description: `Payment ID: ${response.razorpay_payment_id}` });
@@ -313,4 +308,3 @@ export default function PaymentPage() {
     </>
   );
 }
-

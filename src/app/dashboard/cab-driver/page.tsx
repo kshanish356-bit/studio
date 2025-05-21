@@ -35,7 +35,6 @@ export default function CabDriverDashboardPage() {
   const { toast } = useToast();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isAvailable, setIsAvailable] = useState(true);
-  const [currentYear, setCurrentYear] = useState<number | null>(null);
 
   const [upcomingRides, setUpcomingRides] = useState<Ride[]>([]);
   const [rideHistory, setRideHistory] = useState<Ride[]>([]);
@@ -67,7 +66,6 @@ export default function CabDriverDashboardPage() {
   }, [toast]);
 
   useEffect(() => {
-    setCurrentYear(new Date().getFullYear());
     const storedTheme = localStorage.getItem('theme');
     if (storedTheme === 'dark') {
       setIsDarkMode(true);

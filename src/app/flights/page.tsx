@@ -10,10 +10,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'; // DialogClose removed as not explicitly used
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowUp, Search, Plane, Filter, Loader2 } from 'lucide-react';
-import { useRouter } from 'next/navigation'; // Added useRouter
+import { useRouter } from 'next/navigation';
 
 interface Flight {
   id: string;
@@ -26,7 +26,7 @@ interface Flight {
 
 export default function FlightsPage() {
   const { toast } = useToast();
-  const router = useRouter(); // Initialized useRouter
+  const router = useRouter();
 
   // Search form state
   const [fromLocation, setFromLocation] = useState('');
@@ -43,11 +43,11 @@ export default function FlightsPage() {
 
   // Modal states
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
-  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false); // Kept for potential future use
+  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
   const [passengerName, setPassengerName] = useState('');
   const [passengerEmail, setPassengerEmail] = useState('');
-  const [confirmationDetails, setConfirmationDetails] = useState(''); // Kept for potential future use
+  const [confirmationDetails, setConfirmationDetails] = useState('');
 
   // Loading and results
   const [isLoading, setIsLoading] = useState(false);
@@ -55,10 +55,8 @@ export default function FlightsPage() {
 
   // Back to top button
   const [showBackToTop, setShowBackToTop] = useState(false);
-  const [currentYear, setCurrentYear] = useState<number | null>(null);
 
   useEffect(() => {
-    setCurrentYear(new Date().getFullYear());
     const today = new Date().toISOString().split('T')[0];
     setDepartureDate(today);
 
@@ -100,20 +98,15 @@ export default function FlightsPage() {
     toast({ title: 'Processing Booking...', description: `Booking flight ${selectedFlight?.flightNumber} for ${passengerName}.` });
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // Simulate successful booking
-    // In a real app, here you would get a booking ID or confirmation
-    // For now, we assume success and navigate to payment
-    
-    setConfirmationDetails(`Booking confirmed for ${passengerName} on flight ${selectedFlight?.flightNumber}. Email: ${passengerEmail}`); // Store details if needed
+    setConfirmationDetails(`Booking confirmed for ${passengerName} on flight ${selectedFlight?.flightNumber}. Email: ${passengerEmail}`);
     
     setIsBookingModalOpen(false); 
-    // setIsConfirmationModalOpen(true); // Confirmation modal might be shown after payment
     
     setPassengerName('');
     setPassengerEmail('');
     setIsLoading(false);
     toast({ title: 'Booking Processed!', description: 'Proceeding to payment.' });
-    router.push('/payment'); // Navigate to payment page
+    router.push('/payment'); 
   };
 
   const handleAirlineChange = (airline: string) => {

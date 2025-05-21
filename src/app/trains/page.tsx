@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Train, Search, Filter, Loader2, ArrowLeft } from 'lucide-react'; // Added ArrowLeft
+import { Train, Search, Filter, Loader2, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 
@@ -44,10 +44,8 @@ export default function TrainsPage() {
   // Loading and results
   const [isLoading, setIsLoading] = useState(false);
   const [trainResults, setTrainResults] = useState<TrainResult[]>([]);
-  const [currentYear, setCurrentYear] = useState<number | null>(null);
 
   useEffect(() => {
-    setCurrentYear(new Date().getFullYear());
     const today = new Date().toISOString().split('T')[0];
     setDepartureDate(today);
   }, []);
