@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth, type PartnerRole } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -22,7 +22,7 @@ interface AuthModalProps {
 
 type AuthFormType = 'login' | 'signup' | 'reset';
 
-export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: initialLoginIntent = 'user' }: AuthModalProps) {
+export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: initialLoginIntentProp = 'user' }: AuthModalProps) {
   const [activeTab, setActiveTab] = useState<AuthFormType>(initialTab);
   const [showPassword, setShowPassword] = useState(false);
   const [showSignupPassword, setShowSignupPassword] = useState(false);
@@ -40,10 +40,10 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
   const [isPartnerSignup, setIsPartnerSignup] = useState(false);
-  const [signupPartnerTypeSelection, setSignupPartnerTypeSelection] = useState('cabDriver'); // New state for signup partner type
+  const [signupPartnerTypeSelection, setSignupPartnerTypeSelection] = useState<PartnerRole | ''>('cabDriver');
   
   const [attemptingPartnerLogin, setAttemptingPartnerLogin] = useState(false);
-  const [loginPartnerTypeSelection, setLoginPartnerTypeSelection] = useState('');
+  const [loginPartnerTypeSelection, setLoginPartnerTypeSelection] = useState<PartnerRole | ''>('');
   const [resetEmail, setResetEmail] = useState('');
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,14 +57,15 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
       setSignupEmail('');
       setSignupPassword('');
       setSignupConfirmPassword('');
-      setIsPartnerSignup(initialLoginIntent === 'partner');
-      setSignupPartnerTypeSelection('cabDriver'); // Reset on open
-      setAttemptingPartnerLogin(initialLoginIntent === 'partner');
-      setLoginPartnerTypeSelection('');
+      const initialIsPartner = initialLoginIntentProp === 'partner';
+      setIsPartnerSignup(initialIsPartner);
+      setSignupPartnerTypeSelection(initialIsPartner ? 'cabDriver' : ''); 
+      setAttemptingPartnerLogin(initialIsPartner);
+      setLoginPartnerTypeSelection(initialIsPartner ? 'cabDriver' : '');
       setResetEmail('');
       setIsSubmitting(false);
     }
-  }, [isOpen, initialTab, initialLoginIntent]);
+  }, [isOpen, initialTab, initialLoginIntentProp]);
 
   const togglePasswordVisibility = () => setShowPassword(!showPassword);
   const toggleSignupPasswordVisibility = () => setShowSignupPassword(!showSignupPassword);
@@ -81,6 +82,7 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
       await auth.login(loginIdentifier, loginPassword);
       // Login success toast is handled by AuthContext
       onClose();
+      // Redirection is handled by AppHeader based on AuthContext state
     } catch (error: any) {
       toast({ title: "Login Failed", description: error.message || "Invalid credentials or server error.", variant: "destructive" });
     } finally {
@@ -106,16 +108,14 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
     setIsSubmitting(true);
     try {
       const primaryRoleToSet = isPartnerSignup ? 'partner' : 'user';
-      // The 'signupPartnerTypeSelection' is captured here but not directly passed to auth.signup
-      // as the current AuthContext.signup only handles primaryRole.
-      // The partner will select their specific sub-role after this initial signup.
-      await auth.signup(signupEmail, signupPassword, signupName, primaryRoleToSet);
+      const partnerRoleToSet = isPartnerSignup ? signupPartnerTypeSelection as PartnerRole : undefined;
 
-      toast({ title: "Signup Successful!", description: "Your account has been created. Please wait for redirection." });
+      await auth.signup(signupEmail, signupPassword, signupName, primaryRoleToSet, partnerRoleToSet);
+
+      toast({ title: "Signup Successful!", description: "Your account has been created. Redirecting..." });
       onClose();
       router.push('/'); // Navigate to home, AppHeader will handle further redirection
-    } catch (error: any)
-{
+    } catch (error: any) {
       console.error("Signup error in modal:", error);
       toast({ title: "Signup Failed", description: error.message || "Could not create account.", variant: "destructive" });
     } finally {
@@ -163,7 +163,15 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
         <Checkbox 
           id="attemptPartnerLogin" 
           checked={attemptingPartnerLogin} 
-          onCheckedChange={(checked) => setAttemptingPartnerLogin(checked as boolean)} />
+          onCheckedChange={(checked) => {
+            setAttemptingPartnerLogin(checked as boolean);
+            if (checked && !loginPartnerTypeSelection) {
+              setLoginPartnerTypeSelection('cabDriver'); // Default if checking the box
+            } else if (!checked) {
+              setLoginPartnerTypeSelection('');
+            }
+          }}
+        />
         <Label htmlFor="attemptPartnerLogin" className="text-sm font-normal">
           Login as Partner
         </Label>
@@ -171,7 +179,7 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
       {attemptingPartnerLogin && (
         <div className="space-y-2">
           <Label htmlFor="loginPartnerType">Partner Type</Label>
-          <Select value={loginPartnerTypeSelection} onValueChange={setLoginPartnerTypeSelection}>
+          <Select value={loginPartnerTypeSelection || undefined} onValueChange={(value) => setLoginPartnerTypeSelection(value as PartnerRole)}>
             <SelectTrigger id="loginPartnerType">
               <SelectValue placeholder="Select your partner type" />
             </SelectTrigger>
@@ -179,6 +187,7 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
               <SelectItem value="cabDriver">Cab Driver</SelectItem>
               <SelectItem value="houseRent">House Rent Partner</SelectItem>
               <SelectItem value="agent">Travel Agent</SelectItem>
+              <SelectItem value="partnerAdmin">Partner Admin</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -233,7 +242,15 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
         <Checkbox 
           id="partnerSignup" 
           checked={isPartnerSignup} 
-          onCheckedChange={(checked) => setIsPartnerSignup(checked as boolean)} />
+          onCheckedChange={(checked) => {
+            setIsPartnerSignup(checked as boolean);
+            if (checked && !signupPartnerTypeSelection) {
+              setSignupPartnerTypeSelection('cabDriver'); // Default if checking the box
+            } else if (!checked) {
+              setSignupPartnerTypeSelection('');
+            }
+          }}
+        />
         <Label htmlFor="partnerSignup" className="text-sm font-normal">
           Sign up as a Partner (e.g., Cab Driver, Travel Agent)
         </Label>
@@ -241,7 +258,7 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
       {isPartnerSignup && (
         <div className="space-y-2">
           <Label htmlFor="signupPartnerType">Select Partner Type</Label>
-          <Select value={signupPartnerTypeSelection} onValueChange={setSignupPartnerTypeSelection}>
+          <Select value={signupPartnerTypeSelection || undefined} onValueChange={(value) => setSignupPartnerTypeSelection(value as PartnerRole)}>
             <SelectTrigger id="signupPartnerType">
               <SelectValue placeholder="Select your partner type" />
             </SelectTrigger>
@@ -249,6 +266,7 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
               <SelectItem value="cabDriver">Cab Driver</SelectItem>
               <SelectItem value="houseRent">House Rent Partner</SelectItem>
               <SelectItem value="agent">Travel Agent</SelectItem>
+              <SelectItem value="partnerAdmin">Partner Admin</SelectItem>
             </SelectContent>
           </Select>
         </div>

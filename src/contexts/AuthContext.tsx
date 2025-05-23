@@ -2,115 +2,281 @@
 "use client";
 
 import type React from 'react';
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { auth } from '@/lib/firebase/config'; // Import Firebase auth
-import type { User as FirebaseUser } from 'firebase/auth'; // Firebase User type
-import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
+import { auth } from '@/lib/firebase/config';
+import type { User as FirebaseUser } from 'firebase/auth';
+import { 
+  onAuthStateChanged, 
+  signOut as firebaseSignOut,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile,
+  sendPasswordResetEmail
+} from 'firebase/auth';
+
+export type PartnerRole = 'cabDriver' | 'agent' | 'houseRent' | 'partnerAdmin' | '';
+
 
 interface User {
-  id: string; // Corresponds to Firebase uid
+  id: string;
   name: string | null;
   email: string | null;
-  image?: string | null; // Corresponds to Firebase photoURL
-  role?: string; 
+  image?: string | null;
+  primaryRole?: 'user' | 'partner' | null;
+  partnerRole?: PartnerRole | null;
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (userData: User) => void; // Will be updated to use Firebase email/password login
-  logout: () => void;
-  updateUser: (updatedData: Partial<User>) => void; // Will be updated
-  signup: (email: string, pass: string, name: string) => Promise<User | null>; // Placeholder for Firebase signup
-  resetPassword: (email: string) => Promise<void>; // Placeholder for Firebase password reset
+  login: (email: string, pass: string) => Promise<void>;
+  logout: () => Promise<void>;
+  updateUser: (updatedData: Partial<Pick<User, 'name' | 'image'>>) => Promise<void>;
+  signup: (email: string, pass: string, name: string, primaryRole: 'user' | 'partner', partnerRole?: PartnerRole) => Promise<User | null>;
+  resetPassword: (email: string) => Promise<void>;
+  setPartnerSubRole: (subRole: PartnerRole) => Promise<void>;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isSubmitting: boolean; // For modal button states
+  isPartnerRoleSelectionPending: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true); // True while checking Firebase auth state
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false); // For form submission loading state
   const router = useRouter();
   const { toast } = useToast();
+
+
+  const fetchUserRoleData = useCallback(async (uid: string, basicUserContext: Omit<User, 'primaryRole' | 'partnerRole'>) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/user-role/${uid}`);
+      if (response.ok) {
+        const roleData = await response.json();
+        setUser({
+          ...basicUserContext,
+          name: roleData.name || basicUserContext.name, // Prioritize Firestore name
+          email: roleData.email || basicUserContext.email, // Prioritize Firestore email
+          primaryRole: roleData.primaryRole || 'user',
+          partnerRole: roleData.partnerRole || null,
+        });
+      } else {
+        // If fetching role fails (e.g., new user, document not yet created or other error)
+        // We still set the user with basic info and default role. The signup process should create the role doc.
+        console.warn(`Failed to fetch role for ${uid}: ${response.status}. Defaulting role.`);
+        setUser({ 
+            ...basicUserContext, 
+            primaryRole: 'user', 
+            partnerRole: null 
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching user role data:", error);
+      setUser({ 
+          ...basicUserContext, 
+          primaryRole: 'user', // Default role on error
+          partnerRole: null 
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     setIsLoading(true);
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
-        // User is signed in
-        setUser({
+        const defaultName = firebaseUser.displayName || 
+                            (firebaseUser.email ? firebaseUser.email.split('@')[0] : "User");
+        const basicUserContextData = {
           id: firebaseUser.uid,
-          name: firebaseUser.displayName,
+          name: defaultName,
           email: firebaseUser.email,
           image: firebaseUser.photoURL,
-          // role: fetch role from Firestore if needed
-        });
+        };
+        fetchUserRoleData(firebaseUser.uid, basicUserContextData);
       } else {
-        // User is signed out
         setUser(null);
+        setIsLoading(false);
       }
-      setIsLoading(false);
     });
-
-    // Cleanup subscription on unmount
     return () => unsubscribe();
-  }, []);
+  }, [fetchUserRoleData]);
 
-  // Placeholder for login - to be replaced with Firebase email/password login
-  const login = (userData: User) => {
-    // This will be replaced by actual Firebase signInWithEmailAndPassword
-    console.warn("Mock login called. Implement Firebase login.");
-    setUser(userData); 
-    toast({ title: "Login Successful (Mock)", description: `Welcome back, ${userData.name}!` });
+  const login = async (email: string, pass: string) => {
+    setIsSubmitting(true);
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+      // onAuthStateChanged will handle setting user state and fetching roles
+      toast({ title: "Login Successful", description: `Welcome back!` });
+      // Redirection is handled by AppHeader based on updated context
+    } catch (error: any) {
+      console.error("Login error:", error);
+      const errorMessage = error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password'
+        ? "Invalid email or password."
+        : error.message || "Login failed. Please try again.";
+      toast({ title: "Login Failed", description: errorMessage, variant: "destructive" });
+      throw error; // Re-throw to be caught by AuthModal
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const signup = async (email: string, pass: string, name: string, primaryRole: 'user' | 'partner', partnerRole?: PartnerRole) => {
+    setIsSubmitting(true);
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+      await updateProfile(userCredential.user, { displayName: name });
+
+      const rolePayload: any = {
+        name: name,
+        email: email,
+        primaryRole: primaryRole,
+      };
+      if (primaryRole === 'partner' && partnerRole) {
+        rolePayload.partnerRole = partnerRole;
+      } else {
+        rolePayload.partnerRole = null;
+      }
+
+      const roleResponse = await fetch(`/api/user-role/${userCredential.user.uid}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(rolePayload),
+      });
+
+      if (!roleResponse.ok) {
+        const errorData = await roleResponse.json();
+        throw new Error(errorData.message || 'Failed to set user role after signup.');
+      }
+      
+      // onAuthStateChanged will pick up the new user and trigger fetchUserRoleData
+      // which now includes the role set during this signup process.
+      // Return a basic user object, full context update comes from onAuthStateChanged
+      return {
+        id: userCredential.user.uid,
+        name,
+        email,
+        primaryRole,
+        partnerRole: rolePayload.partnerRole,
+      };
+    } catch (error: any) {
+      console.error("Signup error:", error);
+      const errorMessage = error.code === 'auth/email-already-in-use'
+        ? "This email is already registered."
+        : error.message || "Signup failed. Please try again.";
+      toast({ title: "Signup Failed", description: errorMessage, variant: "destructive" });
+      throw error; // Re-throw to be caught by AuthModal
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const resetPassword = async (email: string) => {
+    setIsSubmitting(true);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      toast({ title: "Password Reset Link Sent", description: "If an account exists for this email, a reset link has been sent." });
+    } catch (error: any) {
+      console.error("Password reset error:", error);
+      toast({ title: "Password Reset Failed", description: error.message || "Could not send reset email.", variant: "destructive" });
+      throw error;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const updateUser = async (updatedData: Partial<Pick<User, 'name' | 'image'>>) => {
+    if (!auth.currentUser) {
+      toast({ title: "Not Authenticated", description: "You must be logged in to update your profile.", variant: "destructive" });
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      // Update Firebase Auth profile (client-side)
+      await updateProfile(auth.currentUser, {
+        displayName: updatedData.name,
+        photoURL: updatedData.image,
+      });
+
+      // Update Firestore profile data (backend)
+      const response = await fetch(`/api/user-role/${auth.currentUser.uid}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: updatedData.name, image: updatedData.image }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update profile on the server.');
+      }
+      
+      // Optimistically update local state or re-fetch
+      setUser(prevUser => prevUser ? { ...prevUser, ...updatedData } : null);
+      toast({ title: "Profile Updated", description: "Your profile has been successfully updated." });
+
+    } catch (error: any) {
+      console.error("Error updating profile:", error);
+      toast({ title: "Update Failed", description: error.message || "Could not update profile.", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const logout = async () => {
-    setIsLoading(true);
+    setIsSubmitting(true);
     try {
       await firebaseSignOut(auth);
-      setUser(null);
+      setUser(null); // onAuthStateChanged will also set user to null
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
-      router.push('/'); 
+      router.push('/');
     } catch (error: any) {
       console.error("Error signing out: ", error);
       toast({ title: "Logout Error", description: error.message || "Failed to log out.", variant: "destructive" });
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
+    }
+  };
+
+  const setPartnerSubRole = async (subRole: PartnerRole) => {
+    if (!user || user.primaryRole !== 'partner') {
+      toast({ title: "Error", description: "User is not a partner.", variant: "destructive" });
+      return;
+    }
+    if (!auth.currentUser) {
+        toast({ title: "Error", description: "No authenticated user found.", variant: "destructive"});
+        return;
+    }
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/user-role/${auth.currentUser.uid}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ partnerRole: subRole }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update partner role.');
+      }
+      // Update local user state
+      setUser(prev => prev ? { ...prev, partnerRole: subRole } : null);
+      toast({ title: "Partner Role Set", description: `Your role has been set to ${subRole}.` });
+    } catch (error: any) {
+      console.error("Error setting partner sub-role:", error);
+      toast({ title: "Role Update Failed", description: error.message, variant: "destructive" });
+      throw error;
+    } finally {
+      setIsSubmitting(false);
     }
   };
   
-  // Placeholder for signup - to be implemented with createUserWithEmailAndPassword
-  const signup = async (email: string, pass: string, name: string): Promise<User | null> => {
-    console.warn("Mock signup called. Implement Firebase signup.");
-    // This will be replaced by actual Firebase createUserWithEmailAndPassword
-    // and then updateProfile for displayName
-    toast({ title: "Signup (Mock)", description: "Account created (mock)." });
-    return null; 
-  };
-
-  // Placeholder for password reset - to be implemented with sendPasswordResetEmail
-  const resetPassword = async (email: string): Promise<void> => {
-    console.warn("Mock password reset called. Implement Firebase password reset.");
-    // This will be replaced by actual Firebase sendPasswordResetEmail
-    toast({ title: "Password Reset (Mock)", description: "If email exists, a reset link is sent (mock)." });
-  };
-
-  // Placeholder for updateUser - will be updated to interact with Firebase Auth / Firestore
-  const updateUser = (updatedData: Partial<User>) => {
-    setUser(prevUser => {
-      if (prevUser) {
-        const newUser = { ...prevUser, ...updatedData };
-        // In a real Firebase app, you'd call updateProfile (Auth) or updateDoc (Firestore)
-        console.warn("Mock updateUser called. Implement Firebase profile/Firestore update.");
-        toast({ title: "Profile Updated (Mock)" });
-        return newUser;
-      }
-      return null;
-    });
-  };
+  const isPartnerRoleSelectionPending = !!(user && user.primaryRole === 'partner' && !user.partnerRole);
 
   return (
     <AuthContext.Provider value={{ 
@@ -120,8 +286,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateUser, 
         signup,
         resetPassword,
+        setPartnerSubRole,
         isAuthenticated: !!user, 
-        isLoading 
+        isLoading,
+        isSubmitting,
+        isPartnerRoleSelectionPending
     }}>
       {children}
     </AuthContext.Provider>
