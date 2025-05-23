@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,7 +22,7 @@ interface AuthModalProps {
 
 type AuthFormType = 'login' | 'signup' | 'reset';
 
-export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent = 'user' }: AuthModalProps) {
+export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: initialLoginIntent = 'user' }: AuthModalProps) {
   const [activeTab, setActiveTab] = useState<AuthFormType>(initialTab);
   const [showPassword, setShowPassword] = useState(false);
   const [showSignupPassword, setShowSignupPassword] = useState(false);
@@ -40,6 +40,8 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent =
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
   const [isPartnerSignup, setIsPartnerSignup] = useState(false);
+  const [signupPartnerTypeSelection, setSignupPartnerTypeSelection] = useState('cabDriver'); // New state for signup partner type
+  
   const [attemptingPartnerLogin, setAttemptingPartnerLogin] = useState(false);
   const [loginPartnerTypeSelection, setLoginPartnerTypeSelection] = useState('');
   const [resetEmail, setResetEmail] = useState('');
@@ -55,13 +57,14 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent =
       setSignupEmail('');
       setSignupPassword('');
       setSignupConfirmPassword('');
-      setIsPartnerSignup(loginIntent === 'partner');
-      setAttemptingPartnerLogin(loginIntent === 'partner');
+      setIsPartnerSignup(initialLoginIntent === 'partner');
+      setSignupPartnerTypeSelection('cabDriver'); // Reset on open
+      setAttemptingPartnerLogin(initialLoginIntent === 'partner');
       setLoginPartnerTypeSelection('');
       setResetEmail('');
       setIsSubmitting(false);
     }
-  }, [isOpen, initialTab, loginIntent]);
+  }, [isOpen, initialTab, initialLoginIntent]);
 
   const togglePasswordVisibility = () => setShowPassword(!showPassword);
   const toggleSignupPasswordVisibility = () => setShowSignupPassword(!showSignupPassword);
@@ -76,9 +79,8 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent =
     setIsSubmitting(true);
     try {
       await auth.login(loginIdentifier, loginPassword);
-      // Login success toast is handled by AuthContext after role fetching
+      // Login success toast is handled by AuthContext
       onClose();
-      // Redirection is handled by AppHeader based on AuthContext
     } catch (error: any) {
       toast({ title: "Login Failed", description: error.message || "Invalid credentials or server error.", variant: "destructive" });
     } finally {
@@ -96,16 +98,24 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent =
       toast({ title: "Error", description: "Passwords do not match.", variant: "destructive" });
       return;
     }
+    if (isPartnerSignup && !signupPartnerTypeSelection) {
+      toast({ title: "Error", description: "Please select a partner type.", variant: "destructive" });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const primaryRoleToSet = isPartnerSignup ? 'partner' : 'user';
+      // The 'signupPartnerTypeSelection' is captured here but not directly passed to auth.signup
+      // as the current AuthContext.signup only handles primaryRole.
+      // The partner will select their specific sub-role after this initial signup.
       await auth.signup(signupEmail, signupPassword, signupName, primaryRoleToSet);
 
       toast({ title: "Signup Successful!", description: "Your account has been created. Please wait for redirection." });
       onClose();
-      // Explicitly navigate to home. AppHeader will handle further redirection.
-      router.push('/'); 
-    } catch (error: any) {
+      router.push('/'); // Navigate to home, AppHeader will handle further redirection
+    } catch (error: any)
+{
       console.error("Signup error in modal:", error);
       toast({ title: "Signup Failed", description: error.message || "Could not create account.", variant: "destructive" });
     } finally {
@@ -228,6 +238,21 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent =
           Sign up as a Partner (e.g., Cab Driver, Travel Agent)
         </Label>
       </div>
+      {isPartnerSignup && (
+        <div className="space-y-2">
+          <Label htmlFor="signupPartnerType">Select Partner Type</Label>
+          <Select value={signupPartnerTypeSelection} onValueChange={setSignupPartnerTypeSelection}>
+            <SelectTrigger id="signupPartnerType">
+              <SelectValue placeholder="Select your partner type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="cabDriver">Cab Driver</SelectItem>
+              <SelectItem value="houseRent">House Rent Partner</SelectItem>
+              <SelectItem value="agent">Travel Agent</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
       <Button type="submit" className="w-full" disabled={isSubmitting || auth.isLoading}>
         {(isSubmitting || auth.isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
         Sign Up
@@ -285,5 +310,3 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent =
     </Dialog>
   );
 }
-
-    
