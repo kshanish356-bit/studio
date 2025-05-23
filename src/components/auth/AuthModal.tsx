@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -39,7 +40,8 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent =
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
   const [isPartnerSignup, setIsPartnerSignup] = useState(false);
-  const [attemptingPartnerLogin, setAttemptingPartnerLogin] = useState(false); // For partner login intent
+  const [attemptingPartnerLogin, setAttemptingPartnerLogin] = useState(false);
+  const [loginPartnerTypeSelection, setLoginPartnerTypeSelection] = useState('');
   const [resetEmail, setResetEmail] = useState('');
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -53,8 +55,9 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent =
       setSignupEmail('');
       setSignupPassword('');
       setSignupConfirmPassword('');
-      setIsPartnerSignup(loginIntent === 'partner'); // Pre-fill based on intent for signup
-      setAttemptingPartnerLogin(loginIntent === 'partner'); // Pre-fill based on intent for login
+      setIsPartnerSignup(loginIntent === 'partner');
+      setAttemptingPartnerLogin(loginIntent === 'partner');
+      setLoginPartnerTypeSelection('');
       setResetEmail('');
       setIsSubmitting(false);
     }
@@ -73,7 +76,7 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent =
     setIsSubmitting(true);
     try {
       await auth.login(loginIdentifier, loginPassword);
-      toast({ title: "Login Successful!", description: "Welcome back!" });
+      // Login success toast is handled by AuthContext after role fetching
       onClose();
       // Redirection is handled by AppHeader based on AuthContext
     } catch (error: any) {
@@ -96,17 +99,12 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent =
     setIsSubmitting(true);
     try {
       const primaryRoleToSet = isPartnerSignup ? 'partner' : 'user';
-      const newUser = await auth.signup(signupEmail, signupPassword, signupName, primaryRoleToSet);
+      await auth.signup(signupEmail, signupPassword, signupName, primaryRoleToSet);
 
-      if (newUser) {
-        toast({ title: "Signup Successful!", description: "Your account has been created. Redirecting..." });
-        onClose();
-        // Explicitly navigate to home. AppHeader will handle further redirection.
-        router.push('/'); 
-      } else {
-        // This case should ideally not be reached if signup throws an error for failures
-        toast({ title: "Signup Failed", description: "Could not create account. Please try again.", variant: "destructive" });
-      }
+      toast({ title: "Signup Successful!", description: "Your account has been created. Please wait for redirection." });
+      onClose();
+      // Explicitly navigate to home. AppHeader will handle further redirection.
+      router.push('/'); 
     } catch (error: any) {
       console.error("Signup error in modal:", error);
       toast({ title: "Signup Failed", description: error.message || "Could not create account.", variant: "destructive" });
@@ -124,7 +122,7 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent =
     setIsSubmitting(true);
     try {
       await auth.resetPassword(resetEmail);
-      toast({ title: "Password Reset", description: "If this email is registered, a reset link has been sent." });
+      toast({ title: "Password Reset Link Sent", description: "If this email is registered, a reset link has been sent." });
       setActiveTab('login');
     } catch (error: any) {
        toast({ title: "Password Reset Failed", description: error.message || "Could not send reset email.", variant: "destructive" });
@@ -160,6 +158,21 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent =
           Login as Partner
         </Label>
       </div>
+      {attemptingPartnerLogin && (
+        <div className="space-y-2">
+          <Label htmlFor="loginPartnerType">Partner Type</Label>
+          <Select value={loginPartnerTypeSelection} onValueChange={setLoginPartnerTypeSelection}>
+            <SelectTrigger id="loginPartnerType">
+              <SelectValue placeholder="Select your partner type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="cabDriver">Cab Driver</SelectItem>
+              <SelectItem value="houseRent">House Rent Partner</SelectItem>
+              <SelectItem value="agent">Travel Agent</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
       <Button type="submit" className="w-full" disabled={isSubmitting || auth.isLoading}>
         {(isSubmitting || auth.isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
         Login
@@ -250,7 +263,7 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent =
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px] bg-background/70"> {/* Adjusted for 70% opacity */}
+      <DialogContent className="sm:max-w-[425px] bg-background/70">
         <div className="auth-tabs flex justify-center mb-6 border-b border-border/50">
           <button
             className={`tab-btn px-4 py-2 text-lg font-medium ${activeTab === 'login' ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'}`}
@@ -272,3 +285,5 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent =
     </Dialog>
   );
 }
+
+    
