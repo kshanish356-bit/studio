@@ -49,9 +49,8 @@ export default function AppHeader() {
   }, []);
 
   useEffect(() => {
-    if (isLoading || !isMounted) return; // Don't do anything if auth is loading or component not mounted
+    if (isLoading || !isMounted) return;
 
-    // Redirect authenticated users to appropriate dashboards or role selection
     if (isAuthenticated && user) {
       if (user.primaryRole === 'partner' && isPartnerRoleSelectionPending) {
         if (pathname !== '/partner/select-role') {
@@ -63,7 +62,6 @@ export default function AppHeader() {
           '/cabs', '/trains', '/flights', '/bus', '/holiday-packages',
           '/insurance', '/hotels', '/house-rent'
         ];
-        // If user is authenticated and on a page not in the allowed list (e.g. landing on '/' after login/signup), redirect to dashboard.
         if (!userAllowedPaths.some(p => pathname.startsWith(p))) {
           router.push('/dashboard');
         }
@@ -74,16 +72,14 @@ export default function AppHeader() {
           '/cabs', '/trains', '/flights', '/bus', '/holiday-packages',
           '/insurance', '/hotels', '/house-rent'
         ];
-         // If partner is on home, role selection, or a page not for them post-login, redirect to their specific dashboard
         if (pathname === '/' || pathname === '/partner/select-role' || !partnerSpecificAllowedPaths.some(p => pathname.startsWith(p))) {
-           if (pathname !== partnerDashboardPath) { // Avoid redirect loop if already there
+           if (pathname !== partnerDashboardPath) {
              router.push(partnerDashboardPath);
            }
         }
       }
-    } else if (!isAuthenticated && !isLoading) { // Not authenticated
-      // If user is on a protected path and not authenticated, redirect to home
-      const protectedPaths = ['/dashboard', '/profile', '/settings', '/partner/select-role'];
+    } else if (!isAuthenticated && !isLoading) {
+      const protectedPaths = ['/dashboard', '/profile', '/settings', '/partner/select-role', '/partner/onboarding'];
       if (protectedPaths.some(p => pathname.startsWith(p))) {
         router.push('/');
       }
@@ -102,7 +98,6 @@ export default function AppHeader() {
   };
 
   const toggleTheme = () => {
-    // This is a placeholder. Real theme toggling would involve updating context/localStorage and html class.
     const currentTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
     if (currentTheme === 'dark') {
       document.documentElement.classList.remove('dark');
@@ -114,7 +109,6 @@ export default function AppHeader() {
   };
   
   useEffect(() => {
-    // Apply theme from localStorage on mount
     const storedTheme = localStorage.getItem('theme');
     if (storedTheme === 'dark') {
       document.documentElement.classList.add('dark');
@@ -207,9 +201,6 @@ export default function AppHeader() {
                 <Button onClick={() => openAuthModal('login', 'user')}>
                   <User className="h-4 w-4" /> Login / Sign Up
                 </Button>
-                <Button variant="outline" onClick={() => openAuthModal('login', 'partner')}>
-                  <Users className="h-4 w-4" /> Partner Login
-                </Button>
               </>
             )}
           </div>
@@ -259,9 +250,6 @@ export default function AppHeader() {
                      <Button onClick={() => { openAuthModal('login', 'user'); setIsMobileMenuOpen(false); }} className="w-full justify-start p-2">
                        <User className="mr-2 h-5 w-5" /> Login / Sign Up
                      </Button>
-                     <Button variant="outline" onClick={() => { openAuthModal('login', 'partner'); setIsMobileMenuOpen(false); }} className="w-full justify-start p-2">
-                       <Users className="mr-2 h-5 w-5" /> Partner Login
-                     </Button>
                     </>
                   )}
                   <Button variant="ghost" onClick={() => { toggleTheme(); setIsMobileMenuOpen(false); }} className="w-full justify-start p-2">
@@ -284,5 +272,3 @@ export default function AppHeader() {
     </>
   );
 }
-
-    
