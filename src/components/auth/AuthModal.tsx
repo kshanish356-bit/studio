@@ -40,7 +40,7 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
   const [isPartnerSignup, setIsPartnerSignup] = useState(false);
-  const [signupPartnerTypeSelection, setSignupPartnerTypeSelection] = useState<PartnerRole | ''>('cabDriver');
+  // Removed: signupPartnerTypeSelection state, as specific partner type is not selected at this initial signup stage.
   
   const [attemptingPartnerLogin, setAttemptingPartnerLogin] = useState(false);
   const [loginPartnerTypeSelection, setLoginPartnerTypeSelection] = useState<PartnerRole | ''>('');
@@ -59,9 +59,9 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
       setSignupConfirmPassword('');
       const initialIsPartner = initialLoginIntentProp === 'partner';
       setIsPartnerSignup(initialIsPartner);
-      setSignupPartnerTypeSelection(initialIsPartner ? 'cabDriver' : ''); 
+      // No need to set signupPartnerTypeSelection here anymore
       setAttemptingPartnerLogin(initialIsPartner);
-      setLoginPartnerTypeSelection(initialIsPartner ? 'cabDriver' : '');
+      setLoginPartnerTypeSelection(initialIsPartner ? 'cabDriver' : ''); // Default login intent
       setResetEmail('');
       setIsSubmitting(false);
     }
@@ -80,9 +80,7 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
     setIsSubmitting(true);
     try {
       await auth.login(loginIdentifier, loginPassword);
-      // Login success toast is handled by AuthContext
       onClose();
-      // Redirection is handled by AppHeader based on AuthContext state
     } catch (error: any) {
       toast({ title: "Login Failed", description: error.message || "Invalid credentials or server error.", variant: "destructive" });
     } finally {
@@ -100,19 +98,14 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
       toast({ title: "Error", description: "Passwords do not match.", variant: "destructive" });
       return;
     }
-    if (isPartnerSignup && !signupPartnerTypeSelection) {
-      toast({ title: "Error", description: "Please select a partner type.", variant: "destructive" });
-      return;
-    }
 
     setIsSubmitting(true);
     try {
       const primaryRoleToSet = isPartnerSignup ? 'partner' : 'user';
-      const partnerRoleToSet = isPartnerSignup ? signupPartnerTypeSelection as PartnerRole : undefined;
+      // Partner role is not passed here; it will be null by default for partners.
+      await auth.signup(signupEmail, signupPassword, signupName, primaryRoleToSet);
 
-      await auth.signup(signupEmail, signupPassword, signupName, primaryRoleToSet, partnerRoleToSet);
-
-      toast({ title: "Signup Successful!", description: "Your account has been created. Redirecting..." });
+      toast({ title: "Signup Successful!", description: "Your account has been created. Please check your email for verification if applicable. Redirecting..." });
       onClose();
       router.push('/'); // Navigate to home, AppHeader will handle further redirection
     } catch (error: any) {
@@ -244,33 +237,13 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
           checked={isPartnerSignup} 
           onCheckedChange={(checked) => {
             setIsPartnerSignup(checked as boolean);
-            if (checked && !signupPartnerTypeSelection) {
-              setSignupPartnerTypeSelection('cabDriver'); // Default if checking the box
-            } else if (!checked) {
-              setSignupPartnerTypeSelection('');
-            }
           }}
         />
         <Label htmlFor="partnerSignup" className="text-sm font-normal">
           Sign up as a Partner (e.g., Cab Driver, Travel Agent)
         </Label>
       </div>
-      {isPartnerSignup && (
-        <div className="space-y-2">
-          <Label htmlFor="signupPartnerType">Select Partner Type</Label>
-          <Select value={signupPartnerTypeSelection || undefined} onValueChange={(value) => setSignupPartnerTypeSelection(value as PartnerRole)}>
-            <SelectTrigger id="signupPartnerType">
-              <SelectValue placeholder="Select your partner type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="cabDriver">Cab Driver</SelectItem>
-              <SelectItem value="houseRent">House Rent Partner</SelectItem>
-              <SelectItem value="agent">Travel Agent</SelectItem>
-              <SelectItem value="partnerAdmin">Partner Admin</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      )}
+      {/* Removed Partner Type Select from initial signup. Role selection happens on /partner/select-role */}
       <Button type="submit" className="w-full" disabled={isSubmitting || auth.isLoading}>
         {(isSubmitting || auth.isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
         Sign Up
