@@ -7,83 +7,88 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth, type PartnerRole } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Car } from "lucide-react";
+import { Car, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 
 export default function CabDriverOnboardingPage() {
-    const { user, setPartnerSubRole, isLoading: authLoading } = useAuth();
+    const { user, isLoading: authLoading } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
-    const [vehicleModel, setVehicleModel] = useState("");
-    const [licenseNumber, setLicenseNumber] = useState("");
-    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // This page is now a placeholder as the role is set at signup.
+    // It can be used for future specific Cab Driver onboarding steps if needed.
 
     useEffect(() => {
-        if (!authLoading && !user) {
-            router.push('/'); // Redirect if not logged in
-        } else if (!authLoading && user && user.primaryRole !== 'partner') {
-             router.push('/dashboard'); // Redirect if not a partner
-        } else if (!authLoading && user && user.partnerRole) {
-            router.push(`/dashboard/${user.partnerRole}`); // Redirect if role already set
+        if (!authLoading && (!user || user.primaryRole !== 'partner' || user.partnerRole !== 'cabDriver')) {
+            // If not a cab driver or role not set yet (shouldn't happen if signup flow is direct)
+            // or if trying to access directly without being a cab driver partner, redirect.
+            toast({ title: "Access Denied", description: "Redirecting...", variant: "destructive" });
+            router.push(user && user.primaryRole === 'partner' && !user.partnerRole ? '/partner/select-role' : '/');
+        } else if (!authLoading && user && user.partnerRole === 'cabDriver') {
+            // If already a cab driver, they should be on their dashboard
+            // router.push('/dashboard/cab-driver'); 
+            // Commenting out direct redirect to allow content to show if needed for future steps
         }
-    }, [user, authLoading, router]);
+    }, [user, authLoading, router, toast]);
 
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!vehicleModel || !licenseNumber) {
-            toast({ title: "Missing Information", description: "Please fill all fields.", variant: "destructive" });
-            return;
-        }
-        setIsSubmitting(true);
-        try {
-            // Here you would typically save vehicleModel, licenseNumber, etc., to Firestore
-            // For example, by calling an API route that updates the user's partner profile
-            toast({ title: "Saving Cab Driver Details...", description: "This is a placeholder." });
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-
-            // After saving details, set the partner sub-role
-            await setPartnerSubRole('cabDriver' as PartnerRole);
-            toast({ title: "Cab Driver Role Confirmed!", description: "Redirecting to your dashboard." });
-            router.push('/dashboard/cab-driver');
-        } catch (error: any) {
-            toast({ title: "Onboarding Failed", description: error.message || "Could not complete onboarding.", variant: "destructive" });
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-    
-    if (authLoading || !user || user.primaryRole !== 'partner' || user.partnerRole) {
-        return <div className="container mx-auto px-4 py-16 text-center">Loading or redirecting...</div>;
+    if (authLoading) {
+        return (
+            <div className="container mx-auto px-4 py-16 text-center flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
+                <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+                Loading user data...
+            </div>
+        );
     }
-
+    
+    if (!user || user.primaryRole !== 'partner') {
+         return (
+            <div className="container mx-auto px-4 py-16 text-center">
+                <p>You must be a partner to access this page.</p>
+                <Button onClick={() => router.push('/')} className="mt-4">Go Home</Button>
+            </div>
+        );
+    }
+    
+    if (user.partnerRole && user.partnerRole !== 'cabDriver') {
+        return (
+            <div className="container mx-auto px-4 py-16 text-center">
+                <p>This onboarding is for Cab Drivers. Your role is: {user.partnerRole}</p>
+                <Button onClick={() => router.push(`/dashboard/${user.partnerRole}`)} className="mt-4">Go to Your Dashboard</Button>
+            </div>
+        );
+    }
+    
+    // If user is a partner and role is cabDriver (or not set yet, though it should be by now)
     return (
         <div className="container mx-auto px-4 py-12 flex justify-center items-center min-h-[calc(100vh-200px)]">
             <Card className="w-full max-w-lg shadow-xl">
                 <CardHeader className="text-center">
                     <Car size={48} className="mx-auto mb-4 text-primary" />
-                    <CardTitle className="text-3xl">Cab Driver Onboarding</CardTitle>
-                    <CardDescription>Please provide your vehicle and license details to get started.</CardDescription>
+                    <CardTitle className="text-3xl">Cab Driver Details</CardTitle>
+                    <CardDescription>
+                        Welcome, Cab Driver! Your role is confirmed.
+                        {user.partnerRole === 'cabDriver' ? 
+                            " You can proceed to your dashboard." : 
+                            " Please complete any additional steps if required (future implementation)."
+                        }
+                    </CardDescription>
                 </CardHeader>
-                <form onSubmit={handleSubmit}>
-                    <CardContent className="space-y-4">
-                        <div>
-                            <Label htmlFor="vehicleModel">Vehicle Model</Label>
-                            <Input id="vehicleModel" value={vehicleModel} onChange={(e) => setVehicleModel(e.target.value)} placeholder="e.g., Toyota Camry" required />
-                        </div>
-                        <div>
-                            <Label htmlFor="licenseNumber">Driving License Number</Label>
-                            <Input id="licenseNumber" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} placeholder="e.g., DL12345XYZ" required />
-                        </div>
-                        {/* Add more fields as needed: Vehicle Registration, Insurance, etc. */}
-                    </CardContent>
-                    <CardFooter>
-                        <Button type="submit" className="w-full" disabled={isSubmitting}>
-                            {isSubmitting ? "Submitting..." : "Complete Onboarding & Continue"}
-                        </Button>
-                    </CardFooter>
-                </form>
+                <CardContent>
+                    <p className="text-center text-muted-foreground">
+                        This page can be used for further cab-driver specific onboarding steps in the future,
+                        such as vehicle details, document uploads, etc. For now, your role is set.
+                    </p>
+                </CardContent>
+                <CardFooter className="flex flex-col gap-2">
+                    <Button onClick={() => router.push('/dashboard/cab-driver')} className="w-full">
+                        Go to Cab Driver Dashboard
+                    </Button>
+                     <Button onClick={() => router.push('/')} className="w-full" variant="outline">
+                        Go to Home
+                    </Button>
+                </CardFooter>
             </Card>
         </div>
     );

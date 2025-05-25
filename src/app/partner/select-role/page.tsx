@@ -7,53 +7,68 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Briefcase, Car, UserCheck, Users, Building } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function SelectPartnerRolePage() {
   const { user, isLoading, setPartnerSubRole, isAuthenticated } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       toast({ title: "Access Denied", description: "Please log in.", variant: "destructive" });
       router.push('/');
     } else if (!isLoading && isAuthenticated && user && (user.primaryRole !== 'partner' || user.partnerRole)) {
-      // If user is not a partner, or is a partner but already has a role, redirect them appropriately
       toast({ title: "Role Already Set or Not Applicable", description: "Redirecting to your dashboard.", variant: "default" });
       if (user.primaryRole === 'user') {
         router.push('/dashboard');
       } else if (user.primaryRole === 'partner' && user.partnerRole) {
-        router.push(`/dashboard/${user.partnerRole.toLowerCase().replace(/\s+/g, '-')}`);
+        const dashboardPath = `/dashboard/${user.partnerRole.toLowerCase().replace(/\s+/g, '-')}`;
+        router.push(dashboardPath);
       } else {
-        router.push('/'); // Fallback
+        router.push('/'); 
       }
     }
   }, [user, isLoading, isAuthenticated, router, toast]);
+
+  const handlePartnerTypeSelection = async (partnerType: PartnerRole, dashboardPath: string) => {
+    if (!user || user.primaryRole !== 'partner') {
+      toast({ title: "Error", description: "Invalid user state for role selection.", variant: "destructive" });
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await setPartnerSubRole(partnerType);
+      toast({
+        title: "Partner Role Confirmed!",
+        description: `You are now set as a ${partnerType}. Redirecting...`,
+      });
+      router.push(dashboardPath);
+    } catch (error: any) {
+      toast({
+        title: 'Role Selection Failed',
+        description: error.message || `Could not set role to ${partnerType}.`,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   if (isLoading) {
     return <div className="container mx-auto px-4 py-16 text-center">Loading...</div>;
   }
 
   if (!user || user.primaryRole !== 'partner' || user.partnerRole) {
-    // This case should ideally be caught by the useEffect, but as a fallback:
-    return <div className="container mx-auto px-4 py-16 text-center">Accessing role selection page...</div>;
+    return <div className="container mx-auto px-4 py-16 text-center">Verifying partner status...</div>;
   }
 
-  const handlePartnerTypeSelection = (partnerTypePath: string) => {
-    // Instead of setting the role here, we redirect to the specific onboarding page
-    router.push(partnerTypePath);
-    toast({
-      title: "Proceeding to Onboarding",
-      description: `Please complete the specific onboarding for your chosen partner type.`,
-    });
-  };
-
   const partnerRoles = [
-    { role: 'cabDriver' as PartnerRole, label: 'Cab Driver', icon: Car, path: '/partner/onboarding/cab-driver' },
-    { role: 'agent' as PartnerRole, label: 'Travel Agent', icon: Briefcase, path: '/partner/onboarding/travel-agent' },
-    { role: 'houseRent' as PartnerRole, label: 'House Rent Partner', icon: Building, path: '/partner/onboarding/house-rent' },
-    { role: 'partnerAdmin' as PartnerRole, label: 'Partner Admin', icon: Users, path: '/partner/onboarding/partner-admin' },
+    { role: 'cabDriver' as PartnerRole, label: 'Cab Driver', icon: Car, dashboardPath: '/dashboard/cab-driver' },
+    { role: 'agent' as PartnerRole, label: 'Travel Agent', icon: Briefcase, dashboardPath: '/dashboard/agent' },
+    { role: 'houseRent' as PartnerRole, label: 'House Rent Partner', icon: Building, dashboardPath: '/dashboard' }, // Assuming generic dashboard for now
+    { role: 'partnerAdmin' as PartnerRole, label: 'Partner Admin', icon: Users, dashboardPath: '/dashboard/partner-admin' },
   ];
 
   return (
@@ -65,13 +80,13 @@ export default function SelectPartnerRolePage() {
           <CardDescription>Choose the type of partnership you want to engage in.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {partnerRoles.map(({ role, label, icon: Icon, path }) => (
+          {partnerRoles.map(({ role, label, icon: Icon, dashboardPath }) => (
             <Button
               key={role}
               variant="outline"
               className="w-full justify-start text-lg py-6"
-              onClick={() => handlePartnerTypeSelection(path)}
-              // disabled={isSubmitting} // Add isSubmitting if you have a loading state for this action
+              onClick={() => handlePartnerTypeSelection(role, dashboardPath)}
+              disabled={isSubmitting}
             >
               <Icon className="mr-3 h-6 w-6 text-primary" />
               {label}
