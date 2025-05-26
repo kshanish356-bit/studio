@@ -51,9 +51,11 @@ export default function AppHeader() {
   useEffect(() => {
     if (isLoading || !isMounted) return;
 
+    const currentPath = pathname || "";
+
     if (isAuthenticated && user) {
       if (user.primaryRole === 'partner' && isPartnerRoleSelectionPending) {
-        if (pathname !== '/partner/select-role') {
+        if (currentPath !== '/partner/select-role') {
           router.push('/partner/select-role');
         }
       } else if (user.primaryRole === 'user') {
@@ -62,25 +64,23 @@ export default function AppHeader() {
           '/cabs', '/trains', '/flights', '/bus', '/holiday-packages',
           '/insurance', '/hotels', '/house-rent'
         ];
-        if (!userAllowedPaths.some(p => pathname.startsWith(p))) {
+        if (!userAllowedPaths.some(p => currentPath.startsWith(p))) {
           router.push('/dashboard');
         }
       } else if (user.primaryRole === 'partner' && user.partnerRole) {
         const partnerDashboardPath = `/dashboard/${user.partnerRole.toLowerCase().replace(/\s+/g, '-')}`;
-        const partnerSpecificAllowedPaths = [
+        const partnerAllowedPaths = [
           partnerDashboardPath, '/profile', '/settings', '/payment',
           '/cabs', '/trains', '/flights', '/bus', '/holiday-packages',
           '/insurance', '/hotels', '/house-rent'
         ];
-        if (pathname === '/' || pathname === '/partner/select-role' || !partnerSpecificAllowedPaths.some(p => pathname.startsWith(p))) {
-           if (pathname !== partnerDashboardPath) {
-             router.push(partnerDashboardPath);
-           }
+        if (!partnerAllowedPaths.some(p => currentPath.startsWith(p))) {
+           router.push(partnerDashboardPath);
         }
       }
     } else if (!isAuthenticated && !isLoading) {
       const protectedPaths = ['/dashboard', '/profile', '/settings', '/partner/select-role', '/partner/onboarding'];
-      if (protectedPaths.some(p => pathname.startsWith(p))) {
+      if (protectedPaths.some(p => currentPath.startsWith(p))) {
         router.push('/');
       }
     }
@@ -95,6 +95,7 @@ export default function AppHeader() {
     setAuthModalInitialTab(tab);
     setLoginIntent(intent);
     setIsAuthModalOpen(true);
+    setIsMobileMenuOpen(false); // Close mobile menu if open
   };
 
   const toggleTheme = () => {
@@ -197,11 +198,21 @@ export default function AppHeader() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <>
-                <Button onClick={() => openAuthModal('login', 'user')}>
-                  <User className="h-4 w-4" /> Login / Sign Up
-                </Button>
-              </>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button>
+                    <User className="h-4 w-4" /> Login / Sign Up <ChevronDown size={16} className="ml-2" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => openAuthModal('login', 'user')}>
+                    <UserCircle className="mr-2 h-4 w-4" /> As User
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => openAuthModal('login', 'partner')}>
+                    <Users className="mr-2 h-4 w-4" /> As Partner
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
           
@@ -247,8 +258,11 @@ export default function AppHeader() {
                     </>
                   ) : (
                     <>
-                     <Button onClick={() => { openAuthModal('login', 'user'); setIsMobileMenuOpen(false); }} className="w-full justify-start p-2">
-                       <User className="mr-2 h-5 w-5" /> Login / Sign Up
+                     <Button onClick={() => openAuthModal('login', 'user')} className="w-full justify-start p-2">
+                       <UserCircle className="mr-2 h-5 w-5" /> User Login / Sign Up
+                     </Button>
+                      <Button onClick={() => openAuthModal('login', 'partner')} className="w-full justify-start p-2">
+                       <Users className="mr-2 h-5 w-5" /> Partner Login / Sign Up
                      </Button>
                     </>
                   )}
