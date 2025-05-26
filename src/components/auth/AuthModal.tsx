@@ -40,7 +40,7 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
   const [isPartnerSignup, setIsPartnerSignup] = useState(false);
-  const [signupPartnerTypeSelection, setSignupPartnerTypeSelection] = useState<PartnerRole>('cabDriver'); // Default for partner signup dropdown
+  const [signupPartnerTypeSelection, setSignupPartnerTypeSelection] = useState<PartnerRole>('cabDriver');
   
   const [attemptingPartnerLogin, setAttemptingPartnerLogin] = useState(false);
   const [loginPartnerTypeSelection, setLoginPartnerTypeSelection] = useState<PartnerRole | ''>('');
@@ -59,9 +59,9 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
       setSignupConfirmPassword('');
       const initialIsPartnerFromIntent = initialLoginIntentProp === 'partner';
       setIsPartnerSignup(initialIsPartnerFromIntent);
-      setSignupPartnerTypeSelection(initialIsPartnerFromIntent ? 'cabDriver' : 'cabDriver'); // Default if partner signup intent
+      setSignupPartnerTypeSelection(initialIsPartnerFromIntent ? 'cabDriver' : 'cabDriver');
       setAttemptingPartnerLogin(initialIsPartnerFromIntent);
-      setLoginPartnerTypeSelection(initialIsPartnerFromIntent ? 'cabDriver' : ''); // Default if partner login intent
+      setLoginPartnerTypeSelection(initialIsPartnerFromIntent ? 'cabDriver' : '');
       setResetEmail('');
       setIsSubmitting(false);
     }
@@ -113,8 +113,10 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
       await auth.signup(signupEmail, signupPassword, signupName, primaryRoleToSet, partnerRoleToSet);
 
       toast({ title: "Signup Successful!", description: "Your account has been created. Redirecting..." });
-      onClose();
-      router.push('/'); // Navigate to home, AppHeader will handle further redirection
+      onClose(); // Close the modal
+      // Explicitly push to home page, AppHeader will handle further redirection based on role
+      // router.push('/'); // Removed this in favor of AppHeader handling all post-auth redirection
+
     } catch (error: any) {
       console.error("Signup error in modal:", error);
       toast({ title: "Signup Failed", description: error.message || "Could not create account.", variant: "destructive" });
@@ -209,7 +211,7 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
 
   const renderSignupForm = () => (
     <form onSubmit={handleSignupSubmit} className="space-y-4">
-      <DialogHeader>
+       <DialogHeader>
         <DialogTitle className="text-2xl text-center">Sign Up</DialogTitle>
       </DialogHeader>
       <div>
@@ -326,3 +328,5 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
     </Dialog>
   );
 }
+
+    

@@ -53,6 +53,7 @@ export default function AppHeader() {
 
     const currentPath = pathname || "";
 
+    // Redirect authenticated users to appropriate dashboards or role selection
     if (isAuthenticated && user) {
       if (user.primaryRole === 'partner' && isPartnerRoleSelectionPending) {
         if (currentPath !== '/partner/select-role') {
@@ -62,23 +63,27 @@ export default function AppHeader() {
         const userAllowedPaths = [
           '/dashboard', '/profile', '/settings', '/payment',
           '/cabs', '/trains', '/flights', '/bus', '/holiday-packages',
-          '/insurance', '/hotels', '/house-rent'
+          '/insurance', '/hotels', '/house-rent' 
         ];
         if (!userAllowedPaths.some(p => currentPath.startsWith(p))) {
           router.push('/dashboard');
         }
       } else if (user.primaryRole === 'partner' && user.partnerRole) {
         const partnerDashboardPath = `/dashboard/${user.partnerRole.toLowerCase().replace(/\s+/g, '-')}`;
-        const partnerAllowedPaths = [
-          partnerDashboardPath, '/profile', '/settings', '/payment',
+        const partnerSpecificAllowedPaths = [
+          partnerDashboardPath, 
+          '/profile', 
+          '/settings', 
+          '/payment',
           '/cabs', '/trains', '/flights', '/bus', '/holiday-packages',
-          '/insurance', '/hotels', '/house-rent'
+          '/insurance', '/hotels', '/house-rent' 
         ];
-        if (!partnerAllowedPaths.some(p => currentPath.startsWith(p))) {
+        if (!partnerSpecificAllowedPaths.some(p => currentPath.startsWith(p))) {
            router.push(partnerDashboardPath);
         }
       }
     } else if (!isAuthenticated && !isLoading) {
+      // For unauthenticated users, redirect from protected paths to home
       const protectedPaths = ['/dashboard', '/profile', '/settings', '/partner/select-role', '/partner/onboarding'];
       if (protectedPaths.some(p => currentPath.startsWith(p))) {
         router.push('/');
@@ -128,7 +133,6 @@ export default function AppHeader() {
             <Image src="https://placehold.co/40x40.png" alt="My Apps Logo" width={40} height={40} data-ai-hint="logo abstract" />
           </div>
           <div className="animate-pulse flex items-center space-x-2">
-            <div className="h-8 w-20 bg-muted rounded"></div>
             <div className="h-8 w-20 bg-muted rounded"></div>
             <div className="h-8 w-8 bg-muted rounded-full"></div>
           </div>
@@ -198,14 +202,14 @@ export default function AppHeader() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <DropdownMenu>
+               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button>
-                    <User className="h-4 w-4" /> Login / Sign Up <ChevronDown size={16} className="ml-2" />
+                    <User className="mr-1 h-4 w-4" /> Login / Sign Up <ChevronDown size={16} className="ml-1" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => openAuthModal('login', 'user')}>
+                   <DropdownMenuItem onClick={() => openAuthModal('login', 'user')}>
                     <UserCircle className="mr-2 h-4 w-4" /> As User
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => openAuthModal('login', 'partner')}>
@@ -225,7 +229,7 @@ export default function AppHeader() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-                <SheetHeader>
+                 <SheetHeader>
                   <SheetTitle>Navigation Menu</SheetTitle>
                 </SheetHeader>
                 <nav className="flex flex-col space-y-4 mt-8">
@@ -286,3 +290,5 @@ export default function AppHeader() {
     </>
   );
 }
+
+    
