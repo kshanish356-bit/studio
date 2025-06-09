@@ -1,8 +1,7 @@
 
 "use client";
 
-import type React from 'react';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'; // Corrected React import
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,7 +55,7 @@ interface FlightWithFares {
   stops?: string; // e.g., "Non-stop"
   fareOptions: FareOption[];
   // For display on the main card before opening modal
-  cheapestFare: string; 
+  cheapestFare: string;
 }
 
 // Mock Data with Fare Options
@@ -151,7 +150,7 @@ export default function FlightsPage() {
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false); // For passenger details
   const [selectedFlightForFare, setSelectedFlightForFare] = useState<FlightWithFares | null>(null);
   const [selectedFareOption, setSelectedFareOption] = useState<FareOption | null>(null);
-  
+
   const [passengerName, setPassengerName] = useState('');
   const [passengerEmail, setPassengerEmail] = useState('');
 
@@ -189,23 +188,23 @@ export default function FlightsPage() {
     setIsFareOptionsModalOpen(false); // Close fare options modal
     setIsBookingModalOpen(true); // Open passenger details modal
   };
-  
+
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     toast({ title: 'Processing Booking...', description: `Booking flight ${selectedFlightForFare?.flightNumber} (${selectedFareOption?.name}) for ${passengerName}.` });
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    setIsBookingModalOpen(false); 
+
+    setIsBookingModalOpen(false);
     setPassengerName('');
     setPassengerEmail('');
     setIsLoading(false);
     toast({ title: 'Booking Processed!', description: 'Proceeding to payment.' });
-    router.push('/payment'); 
+    router.push('/payment');
   };
 
   const handleAirlineChange = (airline: string) => {
-    setSelectedAirlines(prev => 
+    setSelectedAirlines(prev =>
       prev.includes(airline) ? prev.filter(a => a !== airline) : [...prev, airline]
     );
   };
@@ -239,7 +238,7 @@ export default function FlightsPage() {
               <span>• Dep: {flight.departureTime} - Arr: {flight.arrivalTime}</span>
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="relative p-4 md:p-6">
              {flight.fareOptions.length > 2 && ( // Show scroll buttons if more than 2 options (adjust as needed)
                 <>
@@ -289,12 +288,12 @@ export default function FlightsPage() {
                       </ul>
                     </div>
                     {fare.offers && fare.offers.length > 0 && (
-                      <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md text-green-700">
+                      <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md text-green-700 dark:bg-green-900/30 dark:border-green-700 dark:text-green-300">
                         {fare.offers.map((offer, idx) => <p key={idx} className="flex items-start"><Percent className="h-3.5 w-3.5 mr-1.5 flex-shrink-0 mt-0.5" /><span>{offer}</span></p>)}
                       </div>
                     )}
                     {fare.benefits && (
-                       <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md text-blue-700">
+                       <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md text-blue-700 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-300">
                           <p className="font-semibold mb-1">{fare.benefits.title}</p>
                           {fare.benefits.details.map((detail, idx) => (
                             <p key={idx} className="flex items-center">
@@ -325,8 +324,8 @@ export default function FlightsPage() {
           display: none;
         }
         .no-scrollbar {
-          -ms-overflow-style: none; 
-          scrollbar-width: none; 
+          -ms-overflow-style: none;
+          scrollbar-width: none;
         }
       `}</style>
       <nav className="p-4 container mx-auto">
@@ -378,7 +377,7 @@ export default function FlightsPage() {
       <div className="container mx-auto flex flex-col md:flex-row gap-8 px-4 py-8">
         <aside className="w-full md:w-1/4 lg:w-1/5 p-6 bg-card rounded-lg shadow-lg self-start">
           <h2 className="text-2xl font-semibold mb-6 flex items-center"><Filter className="mr-2 h-6 w-6 text-primary" /> Filters</h2>
-          
+
           <div className="filter-group mb-6">
             <h3 className="text-lg font-medium mb-3">Fare Type</h3>
             <RadioGroup value={fareType} onValueChange={setFareType} className="space-y-2">
@@ -407,16 +406,16 @@ export default function FlightsPage() {
             <h3 className="text-lg font-medium mb-3">Airlines</h3>
             {['Air India', 'Indigo', 'Vistara'].map(airline => (
               <div key={airline} className="flex items-center space-x-2 mb-2">
-                <Checkbox 
-                  id={`airline-${airline.toLowerCase().replace(/\s+/g, '-')}`} 
-                  checked={selectedAirlines.includes(airline)} 
+                <Checkbox
+                  id={`airline-${airline.toLowerCase().replace(/\s+/g, '-')}`}
+                  checked={selectedAirlines.includes(airline)}
                   onCheckedChange={() => handleAirlineChange(airline)}
                 />
                 <Label htmlFor={`airline-${airline.toLowerCase().replace(/\s+/g, '-')}`} className="cursor-pointer">{airline}</Label>
               </div>
             ))}
           </div>
-          
+
           <div className="filter-group mb-6">
             <h3 className="text-lg font-medium mb-3">Departure Time</h3>
             <p className="text-sm text-muted-foreground">(e.g., Before 6 AM, 6 AM - 12 PM)</p>
@@ -467,9 +466,9 @@ export default function FlightsPage() {
       </div>
 
       {/* Fare Options Modal */}
-      <FareOptionsModal 
-        flight={selectedFlightForFare} 
-        isOpen={isFareOptionsModalOpen} 
+      <FareOptionsModal
+        flight={selectedFlightForFare}
+        isOpen={isFareOptionsModalOpen}
         onClose={() => setIsFareOptionsModalOpen(false)}
         onBook={handleBookNowFromFareOption}
       />
