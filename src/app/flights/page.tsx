@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react'; // Corrected React import
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,20 +14,20 @@ import { Card, CardContent, CardHeader, CardTitle as CardTitleShad, CardDescript
 import { useToast } from '@/hooks/use-toast';
 import { ArrowUp, Search, Plane, Filter, Loader2, ArrowLeft, X, CheckCircle2, AlertCircle, BaggageClaim, Percent, MinusCircle, CalendarDays, ChevronRight, ChevronLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image'; // Added for airline logo in modal
+import Image from 'next/image';
 
 interface FareBenefit {
   text: string;
-  isPositive: boolean; // true for green check, false for orange alert/minus
+  isPositive: boolean;
 }
 
 interface FareOption {
   id: string;
-  name: string; // e.g., SAVER, FLEXI PLUS
-  price: string; // e.g., "₹ 8,841"
-  pricePerAdultSuffix?: string; // e.g., "per adult"
-  fareSource?: string; // e.g., "FARE BY MAKEMYTRIP"
-  isSpecial?: boolean; // e.g., MMT SPECIAL tag
+  name: string;
+  price: string;
+  pricePerAdultSuffix?: string;
+  fareSource?: string;
+  isSpecial?: boolean;
   baggage: {
     cabin: string;
     checkIn: string;
@@ -36,7 +36,7 @@ interface FareOption {
   seatsMealsMore: FareBenefit[];
   offers?: string[];
   benefits?: {
-    title: string; // e.g., "BENEFITS WORTH ₹4,279 INCLUDED"
+    title: string;
     details: { icon?: React.ElementType; text: string }[];
   };
 }
@@ -44,99 +44,25 @@ interface FareOption {
 interface FlightWithFares {
   id: string;
   airlineName: string;
-  airlineLogo?: string; // Optional: path to airline logo
+  airlineLogo?: string;
   flightNumber: string;
   departureCity: string;
   arrivalCity: string;
   departureTime: string;
   arrivalTime: string;
-  departureDateDisplay: string; // e.g., "Tue, 10 Jun 25"
-  duration?: string; // e.g., "2h 15m"
-  stops?: string; // e.g., "Non-stop"
+  departureDateDisplay: string;
+  duration?: string;
+  stops?: string;
   fareOptions: FareOption[];
-  // For display on the main card before opening modal
   cheapestFare: string;
 }
-
-// Mock Data with Fare Options
-const mockFlightResults: FlightWithFares[] = [
-  {
-    id: '1',
-    airlineName: 'IndiGo',
-    airlineLogo: 'https://placehold.co/20x20.png', // Placeholder
-    flightNumber: '6E-202',
-    departureCity: 'New Delhi',
-    arrivalCity: 'Bengaluru',
-    departureTime: '20:15',
-    arrivalTime: '23:15',
-    departureDateDisplay: 'Tue, 10 Jun 25',
-    duration: '3h 0m',
-    stops: 'Non-stop',
-    cheapestFare: '₹ 8,841',
-    fareOptions: [
-      {
-        id: '1-saver',
-        name: 'SAVER',
-        price: '₹ 8,841',
-        pricePerAdultSuffix: 'per adult',
-        baggage: { cabin: '7 Kgs', checkIn: '15 Kgs' },
-        flexibility: [
-          { text: 'Cancellation fee starts at ₹4,279 (up to 4 hours before departure)', isPositive: false },
-          { text: 'Date Change fee starts at ₹2,999 (up to 4 hrs before departure)', isPositive: false },
-        ],
-        seatsMealsMore: [
-          { text: 'Chargeable Seats', isPositive: false },
-          { text: 'Chargeable Meals', isPositive: false },
-        ],
-        offers: ['Get FLAT ₹205 OFF using MMTSUPER | Get Flat 10% off on SBI credit cards using code MMTSBI'],
-      },
-      {
-        id: '1-mmtspecial',
-        name: 'FARE BY MAKEMYTRIP',
-        price: '₹ 9,098',
-        pricePerAdultSuffix: 'per adult',
-        isSpecial: true,
-        baggage: { cabin: '7 Kgs', checkIn: '15 Kgs' },
-        flexibility: [
-          { text: 'Free Cancellation', isPositive: true },
-          { text: 'Free Date Change', isPositive: true },
-        ],
-        seatsMealsMore: [
-          { text: 'Chargeable Seats', isPositive: false },
-          { text: 'Chargeable Meals', isPositive: false },
-        ],
-        benefits: {
-          title: 'BENEFITS WORTH ₹4,279 INCLUDED',
-          details: [{ icon: CalendarDays, text: 'Flexifly (Zero Cancellation OR Free Date Change)' }],
-        },
-      },
-      {
-        id: '1-flexiplus',
-        name: 'FLEXI PLUS',
-        price: '₹ 9,366',
-        pricePerAdultSuffix: 'per adult',
-        baggage: { cabin: '7 Kgs', checkIn: '15 Kgs' },
-        flexibility: [
-          { text: 'Lower Cancellation fee of ₹3,209 (up to 4 hours before departure)', isPositive: false },
-          { text: 'Lower Date Change fee ₹999 up to 4 hrs before departure', isPositive: false },
-        ],
-        seatsMealsMore: [
-          { text: 'Free Seats', isPositive: true },
-          { text: 'Complimentary Meals', isPositive: true },
-        ],
-      },
-    ],
-  },
-  // Add more mock flights if needed
-];
-
 
 export default function FlightsPage() {
   const { toast } = useToast();
   const router = useRouter();
 
-  const [fromLocation, setFromLocation] = useState('New Delhi');
-  const [toLocation, setToLocation] = useState('Bengaluru');
+  const [fromLocation, setFromLocation] = useState('DEL');
+  const [toLocation, setToLocation] = useState('BLR');
   const [departureDate, setDepartureDate] = useState('');
   const [returnDate, setReturnDate] = useState('');
   const [passengersClass, setPassengersClass] = useState('1-Economy');
@@ -147,7 +73,7 @@ export default function FlightsPage() {
   const [selectedAirlines, setSelectedAirlines] = useState<string[]>([]);
 
   const [isFareOptionsModalOpen, setIsFareOptionsModalOpen] = useState(false);
-  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false); // For passenger details
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [selectedFlightForFare, setSelectedFlightForFare] = useState<FlightWithFares | null>(null);
   const [selectedFareOption, setSelectedFareOption] = useState<FareOption | null>(null);
 
@@ -170,11 +96,82 @@ export default function FlightsPage() {
 
   const handleSearchFlights = async () => {
     setIsLoading(true);
+    setFlightResults([]);
     toast({ title: 'Searching Flights', description: `From: ${fromLocation}, To: ${toLocation}` });
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setFlightResults(mockFlightResults); // Use updated mock data
-    setIsLoading(false);
-    toast({ title: 'Search Complete', description: 'Displaying available flights.' });
+
+    try {
+      const response = await fetch(`/api/flights?from=${fromLocation}&to=${toLocation}&date=${departureDate}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch flights');
+      }
+      const data = await response.json();
+
+      if (!data.data || data.data.length === 0) {
+        toast({ title: 'No Flights Found', description: 'No flights match your search criteria. Please try again.' });
+        setFlightResults([]);
+        return;
+      }
+
+      // Map API response to our FlightWithFares structure
+      const results: FlightWithFares[] = data.data.map((flight: any, index: number) => {
+        const departure = new Date(flight.departure.scheduled);
+        const arrival = new Date(flight.arrival.scheduled);
+        const durationMs = arrival.getTime() - departure.getTime();
+        const durationHours = Math.floor(durationMs / (1000 * 60 * 60));
+        const durationMinutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
+        
+        const randomPrice = Math.floor(Math.random() * (15000 - 5000 + 1)) + 5000;
+
+        return {
+          id: `${flight.flight.number}-${index}`,
+          airlineName: flight.airline.name,
+          airlineLogo: 'https://placehold.co/20x20.png',
+          flightNumber: flight.flight.number,
+          departureCity: `${flight.departure.airport} (${flight.departure.iata})`,
+          arrivalCity: `${flight.arrival.airport} (${flight.arrival.iata})`,
+          departureTime: departure.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+          arrivalTime: arrival.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+          departureDateDisplay: departure.toDateString(),
+          duration: `${durationHours}h ${durationMinutes}m`,
+          stops: flight.stops === 0 ? 'Non-stop' : `${flight.stops} stop(s)`,
+          cheapestFare: `₹ ${randomPrice.toLocaleString('en-IN')}`,
+          fareOptions: [ // Generating mock fare options for the fetched flight
+            {
+              id: `${flight.flight.number}-saver`,
+              name: 'SAVER',
+              price: `₹ ${randomPrice.toLocaleString('en-IN')}`,
+              pricePerAdultSuffix: 'per adult',
+              baggage: { cabin: '7 Kgs', checkIn: '15 Kgs' },
+              flexibility: [
+                { text: 'Cancellation fee starts at ₹3,000', isPositive: false },
+                { text: 'Date Change fee starts at ₹2,500', isPositive: false },
+              ],
+              seatsMealsMore: [{ text: 'Chargeable Seats & Meals', isPositive: false }],
+            },
+            {
+              id: `${flight.flight.number}-flexiplus`,
+              name: 'FLEXI PLUS',
+              price: `₹ ${(randomPrice + 1500).toLocaleString('en-IN')}`,
+              pricePerAdultSuffix: 'per adult',
+              baggage: { cabin: '7 Kgs', checkIn: '25 Kgs' },
+              flexibility: [{ text: 'Lower fees for changes', isPositive: true }],
+              seatsMealsMore: [
+                { text: 'Free Seats', isPositive: true },
+                { text: 'Complimentary Meals', isPositive: true },
+              ],
+            },
+          ]
+        };
+      });
+
+      setFlightResults(results);
+      toast({ title: 'Search Complete', description: `${results.length} flights found.` });
+    } catch (error) {
+      console.error('Flight search error:', error);
+      toast({ title: 'Error', description: 'Could not fetch flight data. Please try again.', variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleViewFareOptions = (flight: FlightWithFares) => {
@@ -183,10 +180,10 @@ export default function FlightsPage() {
   };
 
   const handleBookNowFromFareOption = (flight: FlightWithFares, fare: FareOption) => {
-    setSelectedFlightForFare(flight); // Keep flight context
+    setSelectedFlightForFare(flight);
     setSelectedFareOption(fare);
-    setIsFareOptionsModalOpen(false); // Close fare options modal
-    setIsBookingModalOpen(true); // Open passenger details modal
+    setIsFareOptionsModalOpen(false);
+    setIsBookingModalOpen(true);
   };
 
   const handleBookingSubmit = async (e: React.FormEvent) => {
@@ -240,7 +237,7 @@ export default function FlightsPage() {
           </DialogHeader>
 
           <div className="relative p-4 md:p-6">
-             {flight.fareOptions.length > 2 && ( // Show scroll buttons if more than 2 options (adjust as needed)
+             {flight.fareOptions.length > 2 && (
                 <>
                     <Button onClick={() => scroll('left')} variant="outline" size="icon" className="absolute left-1 top-1/2 -translate-y-1/2 z-10 h-8 w-8 md:left-2"> <ChevronLeft className="h-4 w-4" /></Button>
                     <Button onClick={() => scroll('right')} variant="outline" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 z-10 h-8 w-8 md:right-2"> <ChevronRight className="h-4 w-4" /> </Button>
@@ -338,12 +335,12 @@ export default function FlightsPage() {
         <div className="container mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end p-4 bg-card rounded-lg shadow">
             <div className="flex flex-col space-y-1">
-              <Label htmlFor="from">From</Label>
-              <Input id="from" placeholder="Enter origin city" value={fromLocation} onChange={(e) => setFromLocation(e.target.value)} />
+              <Label htmlFor="from">From (IATA Code)</Label>
+              <Input id="from" placeholder="e.g. DEL" value={fromLocation} onChange={(e) => setFromLocation(e.target.value)} />
             </div>
             <div className="flex flex-col space-y-1">
-              <Label htmlFor="to">To</Label>
-              <Input id="to" placeholder="Enter destination city" value={toLocation} onChange={(e) => setToLocation(e.target.value)} />
+              <Label htmlFor="to">To (IATA Code)</Label>
+              <Input id="to" placeholder="e.g. BLR" value={toLocation} onChange={(e) => setToLocation(e.target.value)} />
             </div>
             <div className="flex flex-col space-y-1">
               <Label htmlFor="departure">Departure</Label>
@@ -432,7 +429,7 @@ export default function FlightsPage() {
           </div>
         </aside>
 
-        <section className="flex-grow w-full md:w-3/4 lg:w-4/5">
+        <main className="flex-grow w-full md:w-3/4 lg:w-4/5">
           <h2 className="text-2xl font-semibold mb-6 flex items-center"><Plane className="mr-2 h-6 w-6 text-primary"/> Available Flights</h2>
           {isLoading && !flightResults.length && (
              <div className="flex justify-center items-center h-64">
@@ -462,7 +459,7 @@ export default function FlightsPage() {
               ))}
             </div>
           )}
-        </section>
+        </main>
       </div>
 
       {/* Fare Options Modal */}
