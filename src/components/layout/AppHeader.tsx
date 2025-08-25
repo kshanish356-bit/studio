@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect, useRef } from 'react';
 import {
-  Home, Plane, Train, Hotel, Bus, CarTaxiFront, Briefcase, Shield, Moon, User, ChevronDown, UserCircle, Settings, LogOut, Menu, Building, Users
+  Home, Plane, Train, Hotel, Bus, CarTaxiFront, Briefcase, Shield, Moon, User, ChevronDown, UserCircle, Settings, LogOut, Menu, Building, Users, Shield as ShieldIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AuthModal } from '@/components/auth/AuthModal';
@@ -37,7 +37,7 @@ const navLinks = [
 export default function AppHeader() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalInitialTab, setAuthModalInitialTab] = useState<'login' | 'signup'>('login');
-  const [loginIntent, setLoginIntent] = useState<'user' | 'partner'>('user');
+  const [loginIntent, setLoginIntent] = useState<'user' | 'partner' | 'admin'>('user');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, logout, isAuthenticated, isLoading, isPartnerRoleSelectionPending } = useAuth();
   const [isMounted, setIsMounted] = useState(false);
@@ -66,7 +66,10 @@ export default function AppHeader() {
           '/insurance', '/hotels', '/house-rent' 
         ];
         if (!userAllowedPaths.some(p => currentPath.startsWith(p))) {
-          router.push('/dashboard');
+          // Redirecting from non-app pages, but let them stay on home
+          if (currentPath !== '/') {
+             router.push('/dashboard');
+          }
         }
       } else if (user.primaryRole === 'partner' && user.partnerRole) {
         const partnerDashboardPath = `/dashboard/${user.partnerRole.toLowerCase().replace(/\s+/g, '-')}`;
@@ -79,8 +82,16 @@ export default function AppHeader() {
           '/insurance', '/hotels', '/house-rent' 
         ];
         if (!partnerSpecificAllowedPaths.some(p => currentPath.startsWith(p))) {
-           router.push(partnerDashboardPath);
+           if (currentPath !== '/') {
+             router.push(partnerDashboardPath);
+           }
         }
+      } else if (user.primaryRole === 'admin') {
+          if (!currentPath.startsWith('/dashboard/admin')) {
+             if (currentPath !== '/') {
+                router.push('/dashboard/admin');
+             }
+          }
       }
     } else if (!isAuthenticated && !isLoading) {
       // For unauthenticated users, redirect from protected paths to home
@@ -96,7 +107,7 @@ export default function AppHeader() {
     logout();
   };
 
-  const openAuthModal = (tab: 'login' | 'signup', intent: 'user' | 'partner' = 'user') => {
+  const openAuthModal = (tab: 'login' | 'signup', intent: 'user' | 'partner' | 'admin' = 'user') => {
     setAuthModalInitialTab(tab);
     setLoginIntent(intent);
     setIsAuthModalOpen(true);
@@ -215,6 +226,9 @@ export default function AppHeader() {
                   <DropdownMenuItem onClick={() => openAuthModal('login', 'partner')}>
                     <Users className="mr-2 h-4 w-4" /> As Partner
                   </DropdownMenuItem>
+                   <DropdownMenuItem onClick={() => openAuthModal('login', 'admin')}>
+                    <ShieldIcon className="mr-2 h-4 w-4" /> As Admin
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
@@ -268,6 +282,9 @@ export default function AppHeader() {
                       <Button onClick={() => openAuthModal('login', 'partner')} className="w-full justify-start p-2">
                        <Users className="mr-2 h-5 w-5" /> Partner Login / Sign Up
                      </Button>
+                     <Button onClick={() => openAuthModal('login', 'admin')} className="w-full justify-start p-2">
+                       <ShieldIcon className="mr-2 h-5 w-5" /> Admin Login / Sign Up
+                     </Button>
                     </>
                   )}
                   <Button variant="ghost" onClick={() => { toggleTheme(); setIsMobileMenuOpen(false); }} className="w-full justify-start p-2">
@@ -290,5 +307,3 @@ export default function AppHeader() {
     </>
   );
 }
-
-    
