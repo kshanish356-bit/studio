@@ -29,10 +29,14 @@ export default function DashboardPage() {
                 break;
             case 'partner':
                 if(user.partnerRole) {
-                    router.push(`/dashboard/${user.partnerRole}`);
+                    // This is the key change to ensure redirection
+                    if (user.partnerRole === 'cabDriver') {
+                        router.push('/dashboard/cab-driver');
+                    } else {
+                       router.push(`/dashboard/${user.partnerRole}`);
+                    }
                 }
-                // If they are a partner but have no sub-role, they stay here,
-                // but the isPartnerRoleSelectionPending check should have already caught this.
+                // If they are a partner but have no sub-role, the isPartnerRoleSelectionPending check should have already caught this.
                 break;
             case 'user':
                 // It's a regular user, so they stay on this generic dashboard page.
