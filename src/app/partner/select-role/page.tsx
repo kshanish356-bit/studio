@@ -4,13 +4,13 @@
 import { useAuth, type PartnerRole } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Briefcase, Car, UserCheck, Users, Building } from 'lucide-react';
+import { Briefcase, Car, UserCheck, Users, Building, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState } from 'react';
 
 export default function SelectPartnerRolePage() {
-  const { user, isLoading, setPartnerSubRole, isAuthenticated } = useAuth();
+  const { user, isLoading, setPartnerSubRole, isAuthenticated, isPartnerRoleSelectionPending } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -19,30 +19,36 @@ export default function SelectPartnerRolePage() {
     if (!isLoading && !isAuthenticated) {
       toast({ title: "Access Denied", description: "Please log in.", variant: "destructive" });
       router.push('/');
-    } else if (!isLoading && isAuthenticated && user && (user.primaryRole !== 'partner' || user.partnerRole)) {
-      toast({ title: "Role Already Set or Not Applicable", description: "Redirecting to your dashboard.", variant: "default" });
-      if (user.primaryRole === 'user' || user.primaryRole === 'admin') {
-        const dashboardPath = `/dashboard${user.primaryRole === 'admin' ? '/admin' : '' }`
-        router.push(dashboardPath);
-      } else if (user.primaryRole === 'partner' && user.partnerRole) {
-        let dashboardPath = '/dashboard'; // Fallback
-          switch (user.partnerRole) {
-            case 'cabDriver': dashboardPath = '/dashboard/cab-driver'; break;
-            case 'agent': dashboardPath = '/dashboard/agent'; break;
-            case 'houseRent': dashboardPath = '/dashboard/house-rent'; break;
-          }
-        router.push(dashboardPath);
-      } else {
-        router.push('/'); 
-      }
+    } else if (!isLoading && isAuthenticated && !isPartnerRoleSelectionPending) {
+        toast({ title: "Role Already Set or Not Applicable", description: "Redirecting...", variant: "default" });
+        if (user?.primaryRole === 'partner' && user?.partnerRole) {
+            let dashboardPath = '/dashboard';
+            switch (user.partnerRole) {
+                case 'cabDriver': dashboardPath = '/dashboard/cab-driver'; break;
+                case 'agent': dashboardPath = '/dashboard/agent'; break;
+                case 'houseRent': dashboardPath = '/dashboard/house-rent'; break;
+            }
+            router.push(dashboardPath);
+        } else {
+             router.push('/dashboard');
+        }
     }
-  }, [user, isLoading, isAuthenticated, router, toast]);
+  }, [user, isLoading, isAuthenticated, router, toast, isPartnerRoleSelectionPending]);
 
-  const handlePartnerTypeSelection = async (partnerType: PartnerRole, dashboardPath: string) => {
+  const handlePartnerTypeSelection = async (partnerType: PartnerRole) => {
     if (!user || user.primaryRole !== 'partner') {
       toast({ title: "Error", description: "Invalid user state for role selection.", variant: "destructive" });
       return;
     }
+
+    let dashboardPath = '/dashboard';
+    switch (partnerType) {
+        case 'cabDriver': dashboardPath = '/dashboard/cab-driver'; break;
+        case 'agent': dashboardPath = '/dashboard/agent'; break;
+        case 'houseRent': dashboardPath = '/dashboard/house-rent'; break;
+        default: dashboardPath = '/dashboard'; // Fallback
+    }
+
     setIsSubmitting(true);
     try {
       await setPartnerSubRole(partnerType);
@@ -62,18 +68,29 @@ export default function SelectPartnerRolePage() {
     }
   };
 
-  if (isLoading) {
-    return <div className="container mx-auto px-4 py-16 text-center">Loading...</div>;
+  if (isLoading || !user) {
+    return (
+        <div className="container mx-auto px-4 py-16 text-center flex flex-col items-center justify-center min-h-screen">
+            <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+            <p>Verifying partner status...</p>
+        </div>
+    );
   }
 
-  if (!user || user.primaryRole !== 'partner' || user.partnerRole) {
-    return <div className="container mx-auto px-4 py-16 text-center">Verifying partner status...</div>;
+  if (!isPartnerRoleSelectionPending) {
+     return (
+        <div className="container mx-auto px-4 py-16 text-center flex flex-col items-center justify-center min-h-screen">
+            <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+            <p>Redirecting to your dashboard...</p>
+        </div>
+    );
   }
+
 
   const partnerRoles = [
-    { role: 'cabDriver' as PartnerRole, label: 'Cab Driver', icon: Car, dashboardPath: '/dashboard/cab-driver' },
-    { role: 'agent' as PartnerRole, label: 'Travel Agent', icon: Briefcase, dashboardPath: '/dashboard/agent' },
-    { role: 'houseRent' as PartnerRole, label: 'House Rent Partner', icon: Building, dashboardPath: '/dashboard/house-rent' },
+    { role: 'cabDriver' as PartnerRole, label: 'Cab Driver', icon: Car },
+    { role: 'agent' as PartnerRole, label: 'Travel Agent', icon: Briefcase },
+    { role: 'houseRent' as PartnerRole, label: 'House Rent Partner', icon: Building },
   ];
 
   return (
@@ -85,12 +102,12 @@ export default function SelectPartnerRolePage() {
           <CardDescription>Choose the type of partnership you want to engage in.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {partnerRoles.map(({ role, label, icon: Icon, dashboardPath }) => (
+          {partnerRoles.map(({ role, label, icon: Icon }) => (
             <Button
               key={role}
               variant="outline"
               className="w-full justify-start text-lg py-6"
-              onClick={() => handlePartnerTypeSelection(role, dashboardPath)}
+              onClick={() => handlePartnerTypeSelection(role)}
               disabled={isSubmitting}
             >
               <Icon className="mr-3 h-6 w-6 text-primary" />

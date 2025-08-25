@@ -146,7 +146,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                       router.push('/dashboard/agent');
                       break;
                   default:
-                      router.push('/dashboard');
+                      router.push('/partner/select-role');
               }
           } else {
               router.push('/partner/select-role');

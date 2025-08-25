@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Shield } from 'lucide-react';
 import { useAuth, type PartnerRole } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
@@ -17,13 +17,14 @@ interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialTab?: AuthFormType;
-  loginIntent?: 'user' | 'partner';
+  loginIntent?: 'user' | 'partner' | 'admin';
 }
 
 type AuthFormType = 'login' | 'signup' | 'reset';
 
 export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: initialLoginIntentProp = 'user' }: AuthModalProps) {
   const [activeTab, setActiveTab] = useState<AuthFormType>(initialTab);
+  const [currentLoginIntent, setCurrentLoginIntent] = useState<'user' | 'partner' | 'admin'>(initialLoginIntentProp);
   const [showPassword, setShowPassword] = useState(false);
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -51,17 +52,20 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
   useEffect(() => {
     if (isOpen) {
       setActiveTab(initialTab);
+      setCurrentLoginIntent(initialLoginIntentProp);
+      
+      const isPartner = initialLoginIntentProp === 'partner';
+      const isAdmin = initialLoginIntentProp === 'admin';
+
+      setAttemptingPartnerLogin(isPartner);
+      setIsPartnerSignup(isPartner);
+      
       setLoginIdentifier('');
       setLoginPassword('');
       setSignupName('');
       setSignupEmail('');
       setSignupPassword('');
       setSignupConfirmPassword('');
-      const initialIsPartnerFromIntent = initialLoginIntentProp === 'partner';
-      setIsPartnerSignup(initialIsPartnerFromIntent);
-      setSignupPartnerTypeSelection(initialIsPartnerFromIntent ? 'cabDriver' : 'cabDriver');
-      setAttemptingPartnerLogin(initialIsPartnerFromIntent);
-      setLoginPartnerTypeSelection(initialIsPartnerFromIntent ? 'cabDriver' : '');
       setResetEmail('');
       setIsSubmitting(false);
     }
@@ -79,10 +83,10 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
     }
     setIsSubmitting(true);
     try {
-      await auth.login(loginIdentifier, loginPassword);
+      await auth.login(loginIdentifier, loginPassword, currentLoginIntent);
       toast({ title: "Login Successful", description: "Welcome back!" });
       onClose();
-      // Redirection handled by AppHeader based on AuthContext
+      // Redirection handled by AuthContext
     } catch (error: any) {
       toast({ title: "Login Failed", description: error.message || "Invalid credentials or server error.", variant: "destructive" });
     } finally {
@@ -100,23 +104,28 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
       toast({ title: "Error", description: "Passwords do not match.", variant: "destructive" });
       return;
     }
-    if (isPartnerSignup && !signupPartnerTypeSelection) {
-        toast({ title: "Error", description: "Please select a partner type.", variant: "destructive" });
-        return;
+    
+    let primaryRoleToSet: 'user' | 'partner' | 'admin' = 'user';
+    let partnerRoleToSet: PartnerRole | undefined = undefined;
+
+    if (currentLoginIntent === 'admin') {
+      primaryRoleToSet = 'admin';
+    } else if (isPartnerSignup) {
+      primaryRoleToSet = 'partner';
+      partnerRoleToSet = signupPartnerTypeSelection;
+      if (!partnerRoleToSet) {
+          toast({ title: "Error", description: "Please select a partner type.", variant: "destructive" });
+          return;
+      }
     }
 
     setIsSubmitting(true);
     try {
-      const primaryRoleToSet = isPartnerSignup ? 'partner' : 'user';
-      const partnerRoleToSet = isPartnerSignup ? signupPartnerTypeSelection : undefined;
-
       await auth.signup(signupEmail, signupPassword, signupName, primaryRoleToSet, partnerRoleToSet);
 
       toast({ title: "Signup Successful!", description: "Your account has been created. Redirecting..." });
       onClose(); // Close the modal
-      // Explicitly push to home page, AppHeader will handle further redirection based on role
-      // router.push('/'); // Removed this in favor of AppHeader handling all post-auth redirection
-
+      
     } catch (error: any) {
       console.error("Signup error in modal:", error);
       toast({ title: "Signup Failed", description: error.message || "Could not create account.", variant: "destructive" });
@@ -146,7 +155,7 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
   const renderLoginForm = () => (
     <form onSubmit={handleLoginSubmit} className="space-y-4">
       <DialogHeader>
-        <DialogTitle className="text-2xl text-center">Welcome Back</DialogTitle>
+        <DialogTitle className="text-2xl text-center">{currentLoginIntent === 'admin' ? 'Admin Login' : 'Welcome Back'}</DialogTitle>
       </DialogHeader>
       <div>
         <Label htmlFor="loginIdentifier">Email</Label>
@@ -161,24 +170,30 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
           </Button>
         </div>
       </div>
-      <div className="flex items-center space-x-2">
-        <Checkbox 
-          id="attemptPartnerLogin" 
-          checked={attemptingPartnerLogin} 
-          onCheckedChange={(checked) => {
-            setAttemptingPartnerLogin(checked as boolean);
-            if (checked && !loginPartnerTypeSelection) {
-              setLoginPartnerTypeSelection('cabDriver'); // Default if checking the box
-            } else if (!checked) {
-              setLoginPartnerTypeSelection('');
-            }
-          }}
-        />
-        <Label htmlFor="attemptPartnerLogin" className="text-sm font-normal">
-          Login as Partner
-        </Label>
-      </div>
-      {attemptingPartnerLogin && (
+
+      {currentLoginIntent !== 'admin' &&
+        <div className="flex items-center space-x-2">
+          <Checkbox 
+            id="attemptPartnerLogin" 
+            checked={attemptingPartnerLogin} 
+            onCheckedChange={(checked) => {
+              const isPartner = checked as boolean;
+              setAttemptingPartnerLogin(isPartner);
+              setCurrentLoginIntent(isPartner ? 'partner' : 'user');
+              if (isPartner && !loginPartnerTypeSelection) {
+                setLoginPartnerTypeSelection('cabDriver'); // Default if checking the box
+              } else if (!isPartner) {
+                setLoginPartnerTypeSelection('');
+              }
+            }}
+          />
+          <Label htmlFor="attemptPartnerLogin" className="text-sm font-normal">
+            Login as Partner
+          </Label>
+        </div>
+      }
+      
+      {attemptingPartnerLogin && currentLoginIntent === 'partner' && (
         <div className="space-y-2">
           <Label htmlFor="loginPartnerType">Partner Type</Label>
           <Select value={loginPartnerTypeSelection || undefined} onValueChange={(value) => setLoginPartnerTypeSelection(value as PartnerRole)}>
@@ -189,11 +204,11 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
               <SelectItem value="cabDriver">Cab Driver</SelectItem>
               <SelectItem value="houseRent">House Rent Partner</SelectItem>
               <SelectItem value="agent">Travel Agent</SelectItem>
-              <SelectItem value="partnerAdmin">Partner Admin</SelectItem>
             </SelectContent>
           </Select>
         </div>
       )}
+
       <Button type="submit" className="w-full" disabled={isSubmitting || auth.isLoading}>
         {(isSubmitting || auth.isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
         Login
@@ -212,7 +227,7 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
   const renderSignupForm = () => (
     <form onSubmit={handleSignupSubmit} className="space-y-4">
        <DialogHeader>
-        <DialogTitle className="text-2xl text-center">Sign Up</DialogTitle>
+        <DialogTitle className="text-2xl text-center">{currentLoginIntent === 'admin' ? 'Admin Registration' : 'Sign Up'}</DialogTitle>
       </DialogHeader>
       <div>
         <Label htmlFor="signupName">Full Name</Label>
@@ -240,22 +255,28 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
           </Button>
         </div>
       </div>
-      <div className="flex items-center space-x-2">
-        <Checkbox 
-          id="partnerSignup" 
-          checked={isPartnerSignup} 
-          onCheckedChange={(checked) => {
-            setIsPartnerSignup(checked as boolean);
-            if (checked && !signupPartnerTypeSelection) {
-                setSignupPartnerTypeSelection('cabDriver'); // Default if checking
-            }
-          }}
-        />
-        <Label htmlFor="partnerSignup" className="text-sm font-normal">
-          Sign up as a Partner (e.g., Cab Driver, Travel Agent)
-        </Label>
-      </div>
-       {isPartnerSignup && (
+      
+      {currentLoginIntent !== 'admin' && 
+        <div className="flex items-center space-x-2">
+          <Checkbox 
+            id="partnerSignup" 
+            checked={isPartnerSignup} 
+            onCheckedChange={(checked) => {
+              const isPartner = checked as boolean;
+              setIsPartnerSignup(isPartner);
+              setCurrentLoginIntent(isPartner ? 'partner' : 'user');
+              if (isPartner && !signupPartnerTypeSelection) {
+                  setSignupPartnerTypeSelection('cabDriver'); // Default if checking
+              }
+            }}
+          />
+          <Label htmlFor="partnerSignup" className="text-sm font-normal">
+            Sign up as a Partner (e.g., Cab Driver, Travel Agent)
+          </Label>
+        </div>
+      }
+
+       {isPartnerSignup && currentLoginIntent === 'partner' && (
         <div className="space-y-2">
           <Label htmlFor="signupPartnerType">Select Partner Type</Label>
           <Select value={signupPartnerTypeSelection} onValueChange={(value) => setSignupPartnerTypeSelection(value as PartnerRole)} required>
@@ -266,11 +287,11 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
               <SelectItem value="cabDriver">Cab Driver</SelectItem>
               <SelectItem value="houseRent">House Rent Partner</SelectItem>
               <SelectItem value="agent">Travel Agent</SelectItem>
-              <SelectItem value="partnerAdmin">Partner Admin</SelectItem>
             </SelectContent>
           </Select>
         </div>
       )}
+
       <Button type="submit" className="w-full" disabled={isSubmitting || auth.isLoading}>
         {(isSubmitting || auth.isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
         Sign Up
@@ -306,21 +327,23 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px] bg-background/70">
-        <div className="auth-tabs flex justify-center mb-6 border-b border-border/50">
-          <button
-            className={`tab-btn px-4 py-2 text-lg font-medium ${activeTab === 'login' ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'}`}
-            onClick={() => setActiveTab('login')}
-          >
-            Login
-          </button>
-          <button
-            className={`tab-btn px-4 py-2 text-lg font-medium ${activeTab === 'signup' ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'}`}
-            onClick={() => setActiveTab('signup')}
-          >
-            Sign Up
-          </button>
-        </div>
+      <DialogContent className="sm:max-w-[425px]">
+        {activeTab !== 'reset' && (
+          <div className="flex justify-center mb-6 border-b">
+            <button
+              className={`px-6 py-2 text-lg font-medium transition-colors ${activeTab === 'login' ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'}`}
+              onClick={() => setActiveTab('login')}
+            >
+              Login
+            </button>
+            <button
+              className={`px-6 py-2 text-lg font-medium transition-colors ${activeTab === 'signup' ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'}`}
+              onClick={() => setActiveTab('signup')}
+            >
+              Sign Up
+            </button>
+          </div>
+        )}
         {activeTab === 'login' && renderLoginForm()}
         {activeTab === 'signup' && renderSignupForm()}
         {activeTab === 'reset' && renderResetForm()}
@@ -328,5 +351,3 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
     </Dialog>
   );
 }
-
-    
