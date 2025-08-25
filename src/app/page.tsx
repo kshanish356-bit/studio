@@ -6,12 +6,14 @@ import SpecialOffers from '@/components/home/SpecialOffers';
 import Testimonials from '@/components/home/Testimonials';
 import NewsletterSubscription from '@/components/home/NewsletterSubscription';
 import PersonalizedSuggestions from '@/components/home/PersonalizedSuggestions';
+import DailyInspiration from '@/components/home/DailyInspiration';
 
 export default function HomePage() {
   return (
     <>
       <HeroSection />
       <TrainBookingForm />
+      <DailyInspiration />
       <PersonalizedSuggestions />
       <FeaturedDestinations />
       <SpecialOffers />

@@ -11,7 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { UploadCloud, DownloadCloud, Trash2, Route, MapPin, Building, Navigation, Edit3, Loader2 } from 'lucide-react';
+import { UploadCloud, DownloadCloud, Trash2, Route, MapPin, Building, Navigation, Edit3, Loader2, Sparkles } from 'lucide-react';
+import { getCityTouristPlaces } from '@/ai/flows/city-tourist-places-flow';
 
 
 // Declare mappls for MapmyIndia
@@ -91,6 +92,8 @@ export default function CabAndTourPage() {
   const [isTourStopSuggestionsLoading, setIsTourStopSuggestionsLoading] = useState(false);
   const [showTourStopSuggestions, setShowTourStopSuggestions] = useState(false);
   const tourStopDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [aiCityInput, setAiCityInput] = useState('');
+  const [isAiTourLoading, setIsAiTourLoading] = useState(false);
 
 
   // Cab Booking State
@@ -554,6 +557,29 @@ export default function CabAndTourPage() {
     }, 1500);
   };
 
+  const handleAiTourGeneration = async () => {
+    if (!aiCityInput.trim()) {
+      toast({ title: "City Name Required", description: "Please enter a city name to get AI suggestions.", variant: "destructive" });
+      return;
+    }
+    setIsAiTourLoading(true);
+    try {
+      const result = await getCityTouristPlaces({ cityName: aiCityInput });
+      if (result && result.attractions.length > 0) {
+        loadPresetTour(result.attractions);
+        toast({ title: "AI Tour Generated!", description: `Added ${result.attractions.length} attractions for ${aiCityInput}.` });
+      } else {
+        toast({ title: "No Attractions Found", description: `Could not find attractions for ${aiCityInput}. Please check the city name.`, variant: "default" });
+      }
+    } catch (error) {
+      console.error("AI tour generation error:", error);
+      toast({ title: "AI Error", description: "Failed to generate tour suggestions. Please try again.", variant: "destructive" });
+    } finally {
+      setIsAiTourLoading(false);
+      setAiCityInput('');
+    }
+  };
+
   const presetTours = {
     "Delhi Darshan": ['India Gate, Delhi', 'Red Fort, Delhi', 'Qutub Minar, Delhi'],
     "Mumbai Magic": ['Gateway of India, Mumbai', 'Marine Drive, Mumbai', 'Elephanta Caves, Mumbai'],
@@ -577,10 +603,10 @@ export default function CabAndTourPage() {
         </Link>
       </nav>
 
-      {(isLoading || isCabRouteLoading || isPickupSuggestionsLoading || isDropoffSuggestionsLoading || isCity1LoadingSuggestions || isCity2LoadingSuggestions || isCity3LoadingSuggestions || isTourStopSuggestionsLoading) && (
+      {(isLoading || isCabRouteLoading || isPickupSuggestionsLoading || isDropoffSuggestionsLoading || isCity1LoadingSuggestions || isCity2LoadingSuggestions || isCity3LoadingSuggestions || isTourStopSuggestionsLoading || isAiTourLoading) && (
         <div className="fixed inset-0 bg-black/50 flex flex-col items-center justify-center z-[1000]">
           <Loader2 className="h-16 w-16 text-primary animate-spin" />
-          <div className="text-white mt-4 text-lg">Loading, please wait...</div>
+          <div className="text-white mt-4 text-lg">{isAiTourLoading ? 'Generating AI Tour...' : 'Loading, please wait...'}</div>
         </div>
       )}
 
@@ -617,6 +643,23 @@ export default function CabAndTourPage() {
                 {activeTab === 'cityTour' && (
                   <div id="cityTourSection">
                     <h3 className="text-xl font-semibold mb-3 flex items-center"><Edit3 className="mr-2 h-5 w-5 text-primary"/> City Tours</h3>
+                    
+                    <div className="p-4 rounded-lg bg-secondary mb-4 border border-primary/20">
+                      <h5 className="font-medium mb-2 flex items-center"><Sparkles className="mr-2 h-4 w-4 text-primary" /> AI-Powered Tour Planner</h5>
+                      <div className="flex gap-2">
+                        <Input
+                          value={aiCityInput}
+                          onChange={(e) => setAiCityInput(e.target.value)}
+                          placeholder="Enter a city name (e.g., Jaipur)"
+                          className="flex-grow"
+                        />
+                        <Button onClick={handleAiTourGeneration} disabled={isAiTourLoading}>
+                          {isAiTourLoading ? <Loader2 className="h-4 w-4 animate-spin"/> : <Sparkles className="h-4 w-4"/>}
+                        </Button>
+                      </div>
+                    </div>
+
+
                     <p className="font-medium">Select a Preset City Tour:</p>
                     <div className="mb-3 flex flex-wrap gap-2">
                       {Object.entries(presetTours).map(([name, stops]) => (
@@ -660,7 +703,7 @@ export default function CabAndTourPage() {
                     </div>
                     <div className="flex gap-2 mb-2">
                         <Button variant="outline" onClick={handleAddStop} className="flex-1 rounded-full min-w-0">
-                            <MapPin className="mr-2 h-4 w-4" /> Add List
+                            <MapPin className="mr-2 h-4 w-4" /> Add Stop
                         </Button>
                     </div>
                     
@@ -914,7 +957,3 @@ export default function CabAndTourPage() {
     </>
   );
 }
-
-    
-
-    
