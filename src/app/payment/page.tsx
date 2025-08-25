@@ -84,7 +84,7 @@ export default function PaymentPage() {
     { id: 'card', label: 'Debit/Credit Card', icon: CreditCard, target: 'card' as PaymentSection },
     { id: 'netBanking', label: 'Net Banking', icon: Landmark, target: 'netBanking' as PaymentSection },
     { id: 'wallet', label: 'Mobile Wallets', icon: Wallet, target: 'wallet' as PaymentSection },
-    { id: 'cbdc', label: 'CBDC', icon: CircleDollarSign, target: 'cbdc' as PaymentSection },
+    { id: 'cbdc', label: 'CBDC (Digital Rupee)', icon: CircleDollarSign, target: 'cbdc' as PaymentSection },
   ];
 
   const handleProceedToPayment = (paymentMethod: string, selectedOption?: string) => {
@@ -103,7 +103,6 @@ export default function PaymentPage() {
     // Actual payment logic would go here
   };
   
-  // Adapted from user's script
   const initiateRazorpay = async () => {
     toast({ title: "Initiating Razorpay...", description: "Please wait."});
     // Simulate API call to backend to get order_id or options
@@ -113,15 +112,12 @@ export default function PaymentPage() {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_IR7GZGbUKziGNs", // Use env variable or default
         amount: 10000, // Amount in paise (e.g., 100.00 INR)
         currency: "INR",
-        name: "My Apps", // Updated name
-        description: "CBDC Payment for My Apps", // Updated name
+        name: "My Apps Travel", 
+        description: "CBDC Payment Simulation", 
         // order_id: "order_xyz_from_backend", // This should come from your backend
         handler: async function (response: any) {
             toast({ title: "Payment Successful", description: `Payment ID: ${response.razorpay_payment_id}` });
-            // TODO: Call backend API to verify payment and store transaction
-            // Example:
-            // const verifyResponse = await fetch('/api/payment/verify', { method: 'POST', ... });
-            // if (verifyResponse.ok) { ... }
+            // In a real app, you would verify the payment on your backend here.
         },
         modal: {
             ondismiss: function () {
@@ -155,10 +151,8 @@ export default function PaymentPage() {
 
 
   useEffect(() => {
-    // Simulate fetching net banking options
-    // In a real app, replace this with an API call
-    // setNetBankingOptions(staticNetBankingOptions);
-    // setCbdcOptions(staticCBDCOptions);
+    // Set a default active section on page load for better UX
+    setActiveSection('upi');
   }, []);
 
   return (
@@ -207,7 +201,7 @@ export default function PaymentPage() {
               <div id="quikPaySection">
                 <h2 className="text-xl font-semibold mb-4">QuikPay</h2>
                 <p className="text-muted-foreground mb-4">Fast and secure payment using QR code.</p>
-                <Button onClick={() => handleProceedToPayment('QuikPay')} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                <Button onClick={() => handleProceedToPayment('QuikPay', 'QR Scan')} className="bg-accent hover:bg-accent/90 text-accent-foreground">
                   Scan and Pay
                 </Button>
               </div>
@@ -220,7 +214,7 @@ export default function PaymentPage() {
                   {upiOptions.map((option) => (
                     <Label key={option.id} htmlFor={`upi-${option.id}`} className="flex items-center p-3 border rounded-md hover:bg-secondary cursor-pointer">
                       <Image data-ai-hint={option.aiHint} src={option.logo} alt={option.name} width={24} height={24} className="mr-3" />
-                      <RadioGroupItem value={option.id} id={`upi-${option.id}`} className="mr-3" />
+                      <RadioGroupItem value={option.name} id={`upi-${option.id}`} className="mr-3" />
                       {option.name}
                     </Label>
                   ))}
@@ -238,7 +232,7 @@ export default function PaymentPage() {
                   {cardOptions.map((option) => (
                     <Label key={option.id} htmlFor={`card-${option.id}`} className="flex items-center p-3 border rounded-md hover:bg-secondary cursor-pointer">
                       <Image data-ai-hint={option.aiHint} src={option.logo} alt={option.name} width={24} height={24} className="mr-3" />
-                      <RadioGroupItem value={option.id} id={`card-${option.id}`} className="mr-3" />
+                      <RadioGroupItem value={option.name} id={`card-${option.id}`} className="mr-3" />
                       {option.name}
                     </Label>
                   ))}
@@ -256,7 +250,7 @@ export default function PaymentPage() {
                   {staticNetBankingOptions.map((option) => (
                     <Label key={option.id} htmlFor={`nb-${option.id}`} className="flex items-center p-3 border rounded-md hover:bg-secondary cursor-pointer">
                       <Image data-ai-hint={option.aiHint} src={option.logo} alt={option.name} width={24} height={24} className="mr-3" />
-                      <RadioGroupItem value={option.id} id={`nb-${option.id}`} className="mr-3" />
+                      <RadioGroupItem value={option.name} id={`nb-${option.id}`} className="mr-3" />
                       {option.name}
                     </Label>
                   ))}
@@ -274,7 +268,7 @@ export default function PaymentPage() {
                   {staticWalletOptions.map((option) => (
                     <Label key={option.id} htmlFor={`wallet-${option.id}`} className="flex items-center p-3 border rounded-md hover:bg-secondary cursor-pointer">
                       <Image data-ai-hint={option.aiHint} src={option.logo} alt={option.name} width={24} height={24} className="mr-3" />
-                      <RadioGroupItem value={option.id} id={`wallet-${option.id}`} className="mr-3" />
+                      <RadioGroupItem value={option.name} id={`wallet-${option.id}`} className="mr-3" />
                       {option.name}
                     </Label>
                   ))}
@@ -292,7 +286,7 @@ export default function PaymentPage() {
                   {staticCBDCOptions.map((option) => (
                     <Label key={option.id} htmlFor={`cbdc-${option.id}`} className="flex items-center p-3 border rounded-md hover:bg-secondary cursor-pointer">
                       <Image data-ai-hint={option.aiHint} src={option.logo} alt={option.name} width={24} height={24} className="mr-3" />
-                      <RadioGroupItem value={option.id} id={`cbdc-${option.id}`} className="mr-3" />
+                      <RadioGroupItem value={option.name} id={`cbdc-${option.id}`} className="mr-3" />
                       {option.name}
                     </Label>
                   ))}
