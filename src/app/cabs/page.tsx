@@ -599,7 +599,7 @@ export default function CabAndTourPage() {
       />
       <nav className="p-4 container mx-auto">
         <Link href="/" className="text-primary hover:text-primary/80 font-bold text-lg inline-flex items-center">
-          <Navigation className="mr-2 h-5 w-5 transform rotate-[-90deg]" /> Home
+           Home
         </Link>
       </nav>
 
