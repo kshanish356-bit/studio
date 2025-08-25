@@ -181,7 +181,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ? "Invalid email or password."
         : error.message || "Login failed. Please try again.";
       toast({ title: "Login Failed", description: errorMessage, variant: "destructive" });
-      // Not re-throwing the error to prevent duplicate toasts
     } finally {
       setIsSubmitting(false);
     }
