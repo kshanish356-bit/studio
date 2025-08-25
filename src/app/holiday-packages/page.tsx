@@ -1,14 +1,126 @@
 
-import { Briefcase } from 'lucide-react';
+"use client";
+
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import Image from 'next/image';
+import { Search, MapPin, Users, Calendar, Sun, Mountain, Waves, Star, ArrowRight } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import Link from 'next/link';
+
+const mockPackages = [
+  {
+    id: 1, title: 'Magical Kerala Backwaters', location: 'Kerala, India', duration: '6 Days / 5 Nights', price: 45000,
+    image: 'https://placehold.co/600x400.png', aiHint: 'kerala backwaters', category: 'beach',
+    rating: 4.8, includes: ['Flights', 'Hotels', 'Sightseeing', 'Transfers']
+  },
+  {
+    id: 2, title: 'Royal Rajasthan Desert Safari', location: 'Rajasthan, India', duration: '7 Days / 6 Nights', price: 60000,
+    image: 'https://placehold.co/600x400.png', aiHint: 'rajasthan desert', category: 'cultural',
+    rating: 4.9, includes: ['Hotels', 'Safari', 'Meals', 'Guide']
+  },
+  {
+    id: 3, title: 'Himalayan Adventure in Ladakh', location: 'Ladakh, India', duration: '8 Days / 7 Nights', price: 75000,
+    image: 'https://placehold.co/600x400.png', aiHint: 'ladakh mountains', category: 'adventure',
+    rating: 4.7, includes: ['Hotels', 'Trekking', 'Permits', 'Meals']
+  },
+  {
+    id: 4, title: 'Enchanting Andaman Islands', location: 'Andaman & Nicobar, India', duration: '5 Days / 4 Nights', price: 55000,
+    image: 'https://placehold.co/600x400.png', aiHint: 'andaman beach', category: 'beach',
+    rating: 4.6, includes: ['Flights', 'Resort', 'Scuba Diving', 'Ferry']
+  }
+];
+
+const categoryFilters = [
+  { id: 'all', label: 'All', icon: MapPin },
+  { id: 'beach', label: 'Beaches', icon: Waves },
+  { id: 'mountain', label: 'Mountains', icon: Mountain },
+  { id: 'cultural', label: 'Cultural', icon: Star },
+  { id: 'adventure', label: 'Adventure', icon: Sun },
+];
 
 export default function HolidayPackagesPage() {
+  const [activeCategory, setActiveCategory] = useState('all');
+  
   return (
-    <div className="container mx-auto px-4 py-16 text-center">
-      <Briefcase size={64} className="mx-auto mb-6 text-primary" />
-      <h1 className="text-4xl font-bold mb-4">Holiday Packages</h1>
-      <p className="text-xl text-muted-foreground">
-        Curated holiday packages for your dream vacation. Coming soon!
-      </p>
+    <div className="bg-secondary/30 min-h-screen">
+      <section 
+        className="py-20 md:py-32 text-white relative bg-cover bg-center"
+        style={{ backgroundImage: "url('https://placehold.co/1920x1080.png')"}}
+        data-ai-hint="beautiful landscape"
+      >
+        <div className="absolute inset-0 bg-black/50" />
+        <div className="container mx-auto px-4 relative z-10 text-center">
+          <h1 className="text-4xl md:text-6xl font-extrabold mb-4 drop-shadow-lg">Find Your Dream Vacation</h1>
+          <p className="text-lg md:text-xl mb-8 drop-shadow-md">Explore curated packages for every type of traveler.</p>
+          <div className="max-w-3xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 bg-white/20 backdrop-blur-md p-2 rounded-full">
+              <Input placeholder="Search destination..." className="md:col-span-2 bg-transparent border-none text-white placeholder:text-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 h-12 text-base" />
+              <Button size="lg" className="w-full h-12 text-base rounded-full bg-primary hover:bg-primary/90"><Search className="mr-2 h-5 w-5"/>Search</Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <main className="container mx-auto px-4 py-16">
+        <div className="flex justify-center mb-12">
+          <div className="flex flex-wrap gap-2 bg-background p-2 rounded-full shadow-md">
+            {categoryFilters.map(filter => (
+              <Button 
+                key={filter.id} 
+                variant={activeCategory === filter.id ? "default" : "ghost"}
+                onClick={() => setActiveCategory(filter.id)}
+                className="rounded-full px-4 py-2 h-auto"
+              >
+                <filter.icon className="mr-2 h-5 w-5" /> {filter.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {mockPackages.map(pkg => (
+            <Card key={pkg.id} className="overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 group flex flex-col border-none rounded-xl">
+              <CardHeader className="p-0 relative">
+                <Image
+                  src={pkg.image}
+                  alt={pkg.title}
+                  width={600}
+                  height={400}
+                  className="w-full h-56 object-cover"
+                  data-ai-hint={pkg.aiHint}
+                />
+                <div className="absolute top-4 right-4">
+                  <Badge variant="destructive" className="text-sm">{pkg.duration}</Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6 flex-grow">
+                <div className="flex justify-between items-start mb-2">
+                  <CardTitle className="text-xl group-hover:text-primary transition-colors">{pkg.title}</CardTitle>
+                  <div className="flex items-center gap-1 text-yellow-500 font-bold">
+                    <Star className="h-4 w-4 fill-current"/> {pkg.rating}
+                  </div>
+                </div>
+                <CardDescription className="flex items-center text-sm mb-4"><MapPin className="h-4 w-4 mr-1"/>{pkg.location}</CardDescription>
+                <div className="flex flex-wrap gap-2">
+                  {pkg.includes.map(item => <Badge key={item} variant="secondary">{item}</Badge>)}
+                </div>
+              </CardContent>
+              <CardFooter className="p-6 pt-0 flex justify-between items-center bg-secondary/50">
+                 <div>
+                    <p className="text-sm text-muted-foreground">Starting from</p>
+                    <p className="text-2xl font-bold text-primary">₹{pkg.price.toLocaleString()}</p>
+                 </div>
+                <Button asChild>
+                  <Link href="#">Details <ArrowRight className="ml-2 h-4 w-4"/></Link>
+                </Button>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      </main>
     </div>
   );
 }
