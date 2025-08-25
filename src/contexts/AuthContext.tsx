@@ -116,7 +116,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Manually fetch role after login to ensure immediate redirection logic is correct
       const roleResponse = await fetch(`/api/user-role/${uid}`);
+      if (!roleResponse.ok) {
+        // This case handles when a user exists in Firebase Auth but not in our Firestore `users` collection.
+        // This can happen if Firestore entry creation failed during signup.
+        // We should treat this as a login error, as the user profile is incomplete.
+        const errorData = await roleResponse.json();
+        throw new Error(errorData.message || 'User profile not found. Please contact support.');
+      }
+
       const roleData = await roleResponse.json();
+
+      // Check if the login intent matches the user's actual role
+      if (intent === 'admin' && roleData.primaryRole !== 'admin') {
+          throw new Error('Access denied. Not an admin account.');
+      }
+      if (intent === 'partner' && roleData.primaryRole !== 'partner') {
+          throw new Error('Access denied. Not a partner account.');
+      }
+       if (intent === 'user' && roleData.primaryRole !== 'user') {
+          throw new Error(`This is a ${roleData.primaryRole} account. Please log in through the correct portal.`);
+      }
+
 
       // Update user state immediately after fetching role
       setUser({
@@ -131,9 +151,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toast({ title: "Login Successful", description: `Welcome back!` });
       
       // Redirection logic
-      if (intent === 'admin' && roleData.primaryRole === 'admin') {
+      if (roleData.primaryRole === 'admin') {
           router.push('/dashboard/admin');
-      } else if (intent === 'partner' && roleData.primaryRole === 'partner') {
+      } else if (roleData.primaryRole === 'partner') {
           if (roleData.partnerRole) {
               switch (roleData.partnerRole) {
                   case 'cabDriver':
@@ -161,7 +181,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ? "Invalid email or password."
         : error.message || "Login failed. Please try again.";
       toast({ title: "Login Failed", description: errorMessage, variant: "destructive" });
-      throw error; // Re-throw to be caught by AuthModal
+      // Not re-throwing the error to prevent duplicate toasts
     } finally {
       setIsSubmitting(false);
     }
