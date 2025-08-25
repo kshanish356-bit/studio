@@ -1,16 +1,31 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import Image from 'next/image';
-import { Search, MapPin, Users, Calendar, Sun, Mountain, Waves, Star, ArrowRight } from 'lucide-react';
+import { Search, MapPin, Star, ArrowRight, Sun, Mountain, Waves, Loader2, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
+import { generateImage } from '@/ai/flows/generate-image-flow';
+import { Skeleton } from '@/components/ui/skeleton';
 
-const mockPackages = [
+interface Package {
+  id: number;
+  title: string;
+  location: string;
+  duration: string;
+  price: number;
+  image: string;
+  aiHint: string;
+  category: string;
+  rating: number;
+  includes: string[];
+}
+
+const initialPackages: Package[] = [
   {
     id: 1, title: 'Magical Kerala Backwaters', location: 'Kerala, India', duration: '6 Days / 5 Nights', price: 45000,
     image: 'https://placehold.co/600x400.png', aiHint: 'kerala backwaters', category: 'beach',
@@ -41,9 +56,53 @@ const categoryFilters = [
   { id: 'adventure', label: 'Adventure', icon: Sun },
 ];
 
+
+interface GeneratedImageState {
+  [packageId: number]: {
+    url: string | null;
+    loading: boolean;
+  };
+}
+
 export default function HolidayPackagesPage() {
   const [activeCategory, setActiveCategory] = useState('all');
-  
+  const [packages, setPackages] = useState(initialPackages);
+  const [generatedImages, setGeneratedImages] = useState<GeneratedImageState>({});
+
+  const handleGenerateImages = async () => {
+    setGeneratedImages(prev => {
+        const newState: GeneratedImageState = {};
+        packages.forEach(pkg => {
+            newState[pkg.id] = { url: prev[pkg.id]?.url || null, loading: true };
+        });
+        return newState;
+    });
+
+    const imagePromises = packages.map(async (pkg) => {
+        try {
+            const result = await generateImage({ prompt: pkg.aiHint });
+            if (result.imageUrl) {
+                return { id: pkg.id, url: result.imageUrl };
+            }
+        } catch (error) {
+            console.error(`Failed to generate image for ${pkg.title}:`, error);
+        }
+        return { id: pkg.id, url: null }; // Return null on error
+    });
+
+    const results = await Promise.all(imagePromises);
+
+    setGeneratedImages(prev => {
+        const newState = { ...prev };
+        results.forEach(res => {
+            if (res) {
+                newState[res.id] = { url: res.url, loading: false };
+            }
+        });
+        return newState;
+    });
+  };
+
   return (
     <div className="bg-secondary/30 min-h-screen">
       <section 
@@ -65,6 +124,14 @@ export default function HolidayPackagesPage() {
       </section>
 
       <main className="container mx-auto px-4 py-16">
+         <div className="text-center mb-12">
+           <Button onClick={handleGenerateImages} size="lg" variant="outline">
+              <Sparkles className="mr-2 h-5 w-5 text-primary" />
+              Generate AI Images for Packages
+            </Button>
+            <p className="text-xs text-muted-foreground mt-2">Click to replace placeholder images with unique AI-generated visuals.</p>
+         </div>
+
         <div className="flex justify-center mb-12">
           <div className="flex flex-wrap gap-2 bg-background p-2 rounded-full shadow-md">
             {categoryFilters.map(filter => (
@@ -81,17 +148,21 @@ export default function HolidayPackagesPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {mockPackages.map(pkg => (
+          {packages.map(pkg => (
             <Card key={pkg.id} className="overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 group flex flex-col border-none rounded-xl">
               <CardHeader className="p-0 relative">
-                <Image
-                  src={pkg.image}
-                  alt={pkg.title}
-                  width={600}
-                  height={400}
-                  className="w-full h-56 object-cover"
-                  data-ai-hint={pkg.aiHint}
-                />
+                {generatedImages[pkg.id]?.loading ? (
+                    <Skeleton className="w-full h-56" />
+                ) : (
+                    <Image
+                      src={generatedImages[pkg.id]?.url || pkg.image}
+                      alt={pkg.title}
+                      width={600}
+                      height={400}
+                      className="w-full h-56 object-cover"
+                      data-ai-hint={pkg.aiHint}
+                    />
+                )}
                 <div className="absolute top-4 right-4">
                   <Badge variant="destructive" className="text-sm">{pkg.duration}</Badge>
                 </div>

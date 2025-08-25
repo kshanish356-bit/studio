@@ -3,17 +3,26 @@
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
+import { Search, Mic } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useState, useRef } from 'react';
+
+// Extend the window interface for the Web Speech API
+declare global {
+  interface Window {
+    SpeechRecognition: any;
+    webkitSpeechRecognition: any;
+  }
+}
 
 export default function HeroSection() {
   const { toast } = useToast();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
 
   const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const searchInput = event.currentTarget.elements.namedItem('search-destinations') as HTMLInputElement | null;
-    const searchTerm = searchInput ? searchInput.value : "your destination";
-    
     if (searchTerm.trim()) {
       toast({
         title: "Search Submitted",
@@ -27,6 +36,55 @@ export default function HeroSection() {
         variant: "destructive",
       });
     }
+  };
+
+  const handleVoiceSearch = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast({
+        title: "Browser Not Supported",
+        description: "Voice search is not supported by your browser.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+    
+    const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      toast({ title: "Listening...", description: "Please speak your destination." });
+    };
+
+    recognition.onresult = (event: any) => {
+      const speechResult = event.results[0][0].transcript;
+      setSearchTerm(speechResult);
+      toast({ title: "Voice Recognized", description: `You said: "${speechResult}"` });
+    };
+
+    recognition.onerror = (event: any) => {
+      toast({
+        title: "Voice Search Error",
+        description: event.error === 'no-speech' ? "No speech was detected." : event.error,
+        variant: "destructive",
+      });
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
   };
 
   return (
@@ -50,7 +108,12 @@ export default function HeroSection() {
             placeholder="Search destinations, e.g., Paris, Bali, Tokyo..."
             aria-label="Search destinations"
             className="text-lg p-4 rounded-md flex-grow text-foreground"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
+          <Button type="button" size="lg" variant="secondary" onClick={handleVoiceSearch} aria-label="Voice Search" className={isListening ? 'bg-red-500 hover:bg-red-600' : ''}>
+            <Mic className="h-5 w-5" />
+          </Button>
           <Button type="submit" size="lg" aria-label="Search" className="bg-accent hover:bg-accent/90 text-accent-foreground">
             <Search className="mr-2 h-5 w-5" /> Search
           </Button>

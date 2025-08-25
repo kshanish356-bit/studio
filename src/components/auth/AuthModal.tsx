@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -308,6 +308,9 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
     <form onSubmit={handleResetSubmit} className="space-y-4">
       <DialogHeader>
         <DialogTitle className="text-2xl text-center">Reset Password</DialogTitle>
+        <DialogDescription className="text-center">
+            Enter your email address and we will send you a link to reset your password.
+        </DialogDescription>
       </DialogHeader>
       <div>
         <Label htmlFor="resetEmail">Email</Label>
