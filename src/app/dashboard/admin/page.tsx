@@ -1,12 +1,90 @@
+
 "use client";
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import Link from 'next/link';
+import { Bar, BarChart, CartesianGrid, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend, Cell } from 'recharts';
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, Activity, BarChart2, Settings, Shield, Loader2 } from 'lucide-react';
-import Link from 'next/link';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Users, Activity, BarChart2, Settings, Shield, Loader2, DollarSign, ArrowUpRight, ArrowDownRight, Briefcase } from 'lucide-react';
+import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+
+// Mock Data for Charts
+const revenueData = [
+  { month: 'Jan', revenue: 45000 },
+  { month: 'Feb', revenue: 52000 },
+  { month: 'Mar', revenue: 78000 },
+  { month: 'Apr', revenue: 65000 },
+  { month: 'May', revenue: 89000 },
+  { month: 'Jun', revenue: 95000 },
+];
+
+const userGrowthData = [
+    { date: '2023-01-01', users: 200 },
+    { date: '2023-02-01', users: 240 },
+    { date: '2023-03-01', users: 278 },
+    { date: '2023-04-01', users: 189 },
+    { date: '2023-05-01', users: 239 },
+    { date: '2023-06-01', users: 349 },
+];
+
+const bookingsData = [
+  { service: 'Flights', value: 400, fill: 'hsl(var(--chart-1))' },
+  { service: 'Hotels', value: 300, fill: 'hsl(var(--chart-2))' },
+  { service: 'Trains', value: 300, fill: 'hsl(var(--chart-3))' },
+  { service: 'Cabs', value: 200, fill: 'hsl(var(--chart-4))' },
+];
+
+const recentSales = [
+    { id: 'sale01', user: 'John Doe', email: 'john@example.com', amount: '₹12,500', service: 'Flight' },
+    { id: 'sale02', user: 'Jane Smith', email: 'jane@example.com', amount: '₹8,200', service: 'Hotel' },
+    { id: 'sale03', user: 'Raj Patel', email: 'raj@example.com', amount: '₹1,800', service: 'Train' },
+    { id: 'sale04', user: 'Emily White', email: 'emily@example.com', amount: '₹22,000', service: 'Package' },
+    { id: 'sale05', user: 'Michael Brown', email: 'michael@example.com', amount: '₹750', service: 'Cab' },
+];
+
+
+const revenueChartConfig: ChartConfig = {
+  revenue: {
+    label: "Revenue",
+    color: "hsl(var(--chart-1))",
+  },
+};
+
+const userGrowthChartConfig: ChartConfig = {
+    users: {
+        label: "New Users",
+        color: "hsl(var(--chart-2))",
+    }
+}
+
+const bookingChartConfig: ChartConfig = {
+  value: {
+    label: "Bookings",
+  },
+  flights: {
+    label: "Flights",
+    color: "hsl(var(--chart-1))",
+  },
+  hotels: {
+    label: "Hotels",
+    color: "hsl(var(--chart-2))",
+  },
+  trains: {
+    label: "Trains",
+    color: "hsl(var(--chart-3))",
+  },
+  cabs: {
+    label: "Cabs",
+    color: "hsl(var(--chart-4))",
+  },
+}
+
 
 export default function AdminDashboardPage() {
   const { user, isLoading } = useAuth();
@@ -14,89 +92,193 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     if (!isLoading && (!user || user.primaryRole !== 'admin')) {
-      router.push('/'); // Redirect non-admins
+      toast({ title: "Access Denied", description: "You do not have permission to view this page.", variant: "destructive" });
+      router.push('/');
     }
   }, [user, isLoading, router]);
 
   if (isLoading || !user) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-12">
-      <Card className="max-w-6xl mx-auto shadow-lg">
-        <CardHeader className="text-center border-b pb-6">
-          <Shield size={48} className="mx-auto mb-4 text-primary" />
-          <CardTitle className="text-3xl">Admin Dashboard</CardTitle>
-          <CardDescription>System-wide management and overview.</CardDescription>
-        </CardHeader>
-        <CardContent className="p-6 md:p-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">User Management</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">1,234</div>
-                <p className="text-xs text-muted-foreground">Total registered users</p>
-                <Button asChild className="mt-4 w-full">
-                  <Link href="/admin/users">Manage Users</Link>
-                </Button>
-              </CardContent>
-            </Card>
+    <div className="flex min-h-screen w-full flex-col bg-muted/40">
+        <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+            <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+                        <DollarSign className="h-4 w-4 text-muted-foreground"/>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">₹4,52,31,890</div>
+                        <p className="text-xs text-muted-foreground">+20.1% from last month</p>
+                    </CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+                        <Users className="h-4 w-4 text-muted-foreground"/>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">+2350</div>
+                        <p className="text-xs text-muted-foreground">+180.1% from last month</p>
+                    </CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
+                        <Briefcase className="h-4 w-4 text-muted-foreground"/>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">+12,234</div>
+                        <p className="text-xs text-muted-foreground">+19% from last month</p>
+                    </CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">System Health</CardTitle>
+                        <Activity className="h-4 w-4 text-muted-foreground"/>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">99.9% Uptime</div>
+                        <p className="text-xs text-muted-foreground">No active incidents</p>
+                    </CardContent>
+                </Card>
+            </div>
+            <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
+                 <Card className="xl:col-span-2">
+                    <CardHeader>
+                        <CardTitle>Revenue Overview</CardTitle>
+                        <CardDescription>Monthly revenue for the last 6 months.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                       <ChartContainer config={revenueChartConfig} className="h-[300px] w-full">
+                          <BarChart data={revenueData} accessibilityLayer>
+                             <CartesianGrid vertical={false} />
+                             <XAxis dataKey="month" tickLine={false} tickMargin={10} axisLine={false} />
+                             <YAxis tickLine={false} axisLine={false} tickFormatter={(value) => `₹${value / 1000}k`} />
+                             <Tooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
+                             <Bar dataKey="revenue" fill="var(--color-revenue)" radius={8} />
+                          </BarChart>
+                       </ChartContainer>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Bookings by Service</CardTitle>
+                         <CardDescription>Distribution of bookings across different services.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex items-center justify-center">
+                         <ChartContainer config={bookingChartConfig} className="h-[300px] w-full">
+                            <PieChart>
+                               <Tooltip content={<ChartTooltipContent nameKey="service" hideLabel />} />
+                               <Pie data={bookingsData} dataKey="value" nameKey="service" innerRadius={60} strokeWidth={5}>
+                                {bookingsData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                                ))}
+                               </Pie>
+                                <Legend content={<ChartTooltipContent nameKey="service" hideLabel hideIndicator />} />
+                            </PieChart>
+                         </ChartContainer>
+                    </CardContent>
+                </Card>
+                <Card className="xl:col-span-3">
+                    <CardHeader>
+                        <CardTitle>Recent Sales</CardTitle>
+                        <CardDescription>A list of the most recent transactions.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Customer</TableHead>
+                                    <TableHead>Service</TableHead>
+                                    <TableHead className="text-right">Amount</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {recentSales.map(sale => (
+                                    <TableRow key={sale.id}>
+                                        <TableCell>
+                                            <div className="font-medium">{sale.user}</div>
+                                            <div className="text-sm text-muted-foreground">{sale.email}</div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant="outline">{sale.service}</Badge>
+                                        </TableCell>
+                                        <TableCell className="text-right">{sale.amount}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+                 <Card className="xl:col-span-3">
+                    <CardHeader>
+                        <CardTitle>User Growth</CardTitle>
+                        <CardDescription>New users registered over the last 6 months.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                       <ChartContainer config={userGrowthChartConfig} className="h-[300px] w-full">
+                            <LineChart data={userGrowthData} accessibilityLayer margin={{ left: 12, right: 12 }}>
+                               <CartesianGrid vertical={false} />
+                               <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short' })} />
+                               <YAxis tickLine={false} axisLine={false} />
+                               <Tooltip content={<ChartTooltipContent indicator="dot" />} />
+                               <Line dataKey="users" type="monotone" stroke="var(--color-users)" strokeWidth={2} dot={true} />
+                            </LineChart>
+                       </ChartContainer>
+                    </CardContent>
+                </Card>
+            </div>
+             <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">User Management</CardTitle>
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-xs text-muted-foreground">Manage users, roles, and permissions.</p>
+                    <Button asChild className="mt-4 w-full">
+                      <Link href="/admin/users">Manage Users</Link>
+                    </Button>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">System Activity</CardTitle>
-                <Activity className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">+573</div>
-                <p className="text-xs text-muted-foreground">New bookings this week</p>
-                 <Button asChild variant="outline" className="mt-4 w-full">
-                  <Link href="/admin/activity">View Activity Logs</Link>
-                </Button>
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">System Settings</CardTitle>
+                    <Settings className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-xs text-muted-foreground">Configure global application settings.</p>
+                     <Button asChild variant="outline" className="mt-4 w-full">
+                      <Link href="/admin/settings">Access Settings</Link>
+                    </Button>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Analytics</CardTitle>
-                <BarChart2 className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">Reports</div>
-                <p className="text-xs text-muted-foreground">View detailed analytics</p>
-                 <Button asChild className="mt-4 w-full">
-                  <Link href="/admin/analytics">Go to Analytics</Link>
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="lg:col-span-3">
-              <CardHeader>
-                <CardTitle className="text-xl flex items-center">
-                  <Settings className="mr-2 h-5 w-5"/>
-                  System Settings
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">Manage global application settings, API keys, and feature flags.</p>
-                <Button asChild variant="destructive" className="mt-4">
-                  <Link href="/admin/settings">Access System Settings</Link>
-                </Button>
-              </CardContent>
-            </Card>
-
-          </div>
-        </CardContent>
-      </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Security</CardTitle>
+                    <Shield className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-xs text-muted-foreground">View security logs and settings.</p>
+                     <Button asChild className="mt-4 w-full">
+                      <Link href="/admin/security">Security Center</Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+             </div>
+        </main>
     </div>
   );
 }
+
+    
