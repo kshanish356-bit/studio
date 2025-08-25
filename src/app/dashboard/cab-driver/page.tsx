@@ -20,8 +20,11 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, PlusCircle } from 'lucide-react';
+import { Loader2, PlusCircle, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { Checkbox } from '@/components/ui/checkbox';
+import { generateImage } from '@/ai/flows/generate-image-flow';
+import { generatePackageDetails } from '@/ai/flows/generate-package-details-flow';
 
 declare global {
   interface Window {
@@ -65,6 +68,11 @@ export default function CabDriverDashboardPage() {
   const [packageDescription, setPackageDescription] = useState('');
   const [packagePrice, setPackagePrice] = useState('');
   const [packageDuration, setPackageDuration] = useState('');
+  const [packageItinerary, setPackageItinerary] = useState('');
+  const [isFeatured, setIsFeatured] = useState(false);
+  const [aiImageHint, setAiImageHint] = useState('');
+  const [isAiLoading, setIsAiLoading] = useState(false);
+
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -213,13 +221,45 @@ export default function CabDriverDashboardPage() {
     }
   };
 
+  const handleAiAssist = async () => {
+    if (!packageTitle) {
+      toast({ title: "Title Required", description: "Please enter a package title to get AI assistance.", variant: "destructive" });
+      return;
+    }
+    setIsAiLoading(true);
+    try {
+      const result = await generatePackageDetails({ title: packageTitle });
+      if (result.description) setPackageDescription(result.description);
+      if (result.itinerary) setPackageItinerary(result.itinerary);
+      if (result.aiImageHint) setAiImageHint(result.aiImageHint);
+      toast({ title: "AI Assistance Complete", description: "Content has been generated for your package." });
+    } catch (error) {
+      toast({ title: "AI Assist Failed", description: (error as Error).message, variant: "destructive" });
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
   const handleCreatePackage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!packageTitle || !packageDescription || !packagePrice || !packageDuration) {
+    if (!packageTitle || !packageDescription || !packagePrice || !packageDuration || !packageItinerary) {
       toast({ title: "Missing Information", description: "Please fill all fields to create a package.", variant: "destructive" });
       return;
     }
     setIsSubmittingPackage(true);
+    
+    let imageUrl = 'https://placehold.co/600x400.png';
+    const finalAiHint = aiImageHint || packageTitle;
+    try {
+      toast({ title: "Generating Package Image...", description: "Please wait, this may take a moment." });
+      const imageResult = await generateImage({ prompt: finalAiHint });
+      if (imageResult.imageUrl) {
+        imageUrl = imageResult.imageUrl;
+      }
+    } catch (error) {
+      toast({ title: "AI Image Failed", description: "Could not generate an image, using a placeholder.", variant: "default" });
+    }
+
     try {
       const response = await fetch('/api/tour-packages', {
         method: 'POST',
@@ -230,7 +270,11 @@ export default function CabDriverDashboardPage() {
           price: Number(packagePrice),
           duration: packageDuration,
           createdBy: user?.name || 'Driver',
-          creatorRole: 'cabDriver'
+          creatorRole: 'cabDriver',
+          itinerary: packageItinerary,
+          isFeatured: isFeatured,
+          image: imageUrl,
+          aiHint: finalAiHint,
         }),
       });
       if (!response.ok) throw new Error('Failed to create package');
@@ -241,6 +285,9 @@ export default function CabDriverDashboardPage() {
       setPackageDescription('');
       setPackagePrice('');
       setPackageDuration('');
+      setPackageItinerary('');
+      setIsFeatured(false);
+      setAiImageHint('');
 
     } catch (error) {
        toast({ title: "Creation Failed", description: (error as Error).message, variant: 'destructive' });
@@ -334,14 +381,23 @@ export default function CabDriverDashboardPage() {
                       <CardDescription>Offer a fixed-rate tour package to customers.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                      <div className="space-y-1">
+                       <div className="space-y-1">
                           <Label htmlFor="pkg-title-cab">Package Title</Label>
-                          <Input id="pkg-title-cab" placeholder="e.g., Delhi Sightseeing Tour" value={packageTitle} onChange={e => setPackageTitle(e.target.value)} />
-                      </div>
-                      <div className="space-y-1">
+                           <div className="flex gap-2">
+                             <Input id="pkg-title-cab" placeholder="e.g., Delhi Sightseeing Tour" value={packageTitle} onChange={e => setPackageTitle(e.target.value)} />
+                             <Button type="button" variant="outline" onClick={handleAiAssist} disabled={isAiLoading}>
+                                {isAiLoading ? <Loader2 className="h-4 w-4 animate-spin"/> : <Sparkles className="h-4 w-4 text-primary" />}
+                             </Button>
+                           </div>
+                       </div>
+                       <div className="space-y-1">
                           <Label htmlFor="pkg-desc-cab">Description</Label>
                           <Textarea id="pkg-desc-cab" placeholder="Describe the tour package..." value={packageDescription} onChange={e => setPackageDescription(e.target.value)} />
-                      </div>
+                       </div>
+                       <div className="space-y-1">
+                          <Label htmlFor="pkg-itinerary-cab">Itinerary</Label>
+                          <Textarea id="pkg-itinerary-cab" placeholder="AI will generate this, or you can write your own." value={packageItinerary} onChange={e => setPackageItinerary(e.target.value)} />
+                       </div>
                        <div className="flex gap-4">
                           <div className="space-y-1 w-1/2">
                               <Label htmlFor="pkg-duration-cab">Duration</Label>
@@ -351,6 +407,14 @@ export default function CabDriverDashboardPage() {
                               <Label htmlFor="pkg-price-cab">Price (INR)</Label>
                               <Input id="pkg-price-cab" type="number" placeholder="e.g., 2500" value={packagePrice} onChange={e => setPackagePrice(e.target.value)} />
                           </div>
+                       </div>
+                       <div className="space-y-1">
+                          <Label htmlFor="ai-hint-cab">AI Image Hint (Optional)</Label>
+                          <Input id="ai-hint-cab" placeholder="e.g., india gate sunset" value={aiImageHint} onChange={e => setAiImageHint(e.target.value)} />
+                       </div>
+                       <div className="flex items-center space-x-2">
+                           <Checkbox id="isFeatured-cab" checked={isFeatured} onCheckedChange={(checked) => setIsFeatured(!!checked)} />
+                           <Label htmlFor="isFeatured-cab">Mark as Featured Package</Label>
                        </div>
                   </CardContent>
                   <CardFooter>
