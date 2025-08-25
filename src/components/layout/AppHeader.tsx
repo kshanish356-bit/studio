@@ -53,53 +53,10 @@ export default function AppHeader() {
 
     const currentPath = pathname || "";
 
-    // Redirect authenticated users to appropriate dashboards or role selection
-    if (isAuthenticated && user) {
-      if (user.primaryRole === 'partner' && isPartnerRoleSelectionPending) {
-        if (currentPath !== '/partner/select-role') {
-          router.push('/partner/select-role');
-        }
-      } else if (user.primaryRole === 'user') {
-        const userAllowedPaths = [
-          '/dashboard', '/profile', '/settings', '/payment',
-          '/cabs', '/trains', '/flights', '/bus', '/holiday-packages',
-          '/insurance', '/hotels', '/house-rent' 
-        ];
-        if (!userAllowedPaths.some(p => currentPath.startsWith(p))) {
-          // Redirecting from non-app pages, but let them stay on home
-          if (currentPath !== '/') {
-             router.push('/dashboard');
-          }
-        }
-      } else if (user.primaryRole === 'partner' && user.partnerRole) {
-        const partnerDashboardPath = `/dashboard/${user.partnerRole.toLowerCase().replace(/\s+/g, '-')}`;
-        const partnerSpecificAllowedPaths = [
-          partnerDashboardPath, 
-          '/profile', 
-          '/settings', 
-          '/payment',
-          '/cabs', '/trains', '/flights', '/bus', '/holiday-packages',
-          '/insurance', '/hotels', '/house-rent' 
-        ];
-        if (!partnerSpecificAllowedPaths.some(p => currentPath.startsWith(p))) {
-           if (currentPath !== '/') {
-             router.push(partnerDashboardPath);
-           }
-        }
-      } else if (user.primaryRole === 'admin') {
-          if (!currentPath.startsWith('/dashboard/admin')) {
-             if (currentPath !== '/') {
-                router.push('/dashboard/admin');
-             }
-          }
-      }
-    } else if (!isAuthenticated && !isLoading) {
-      // For unauthenticated users, redirect from protected paths to home
-      const protectedPaths = ['/dashboard', '/profile', '/settings', '/partner/select-role', '/partner/onboarding'];
-      if (protectedPaths.some(p => currentPath.startsWith(p))) {
-        router.push('/');
-      }
-    }
+    // This block is now handled more robustly inside the AuthContext
+    // to prevent redirection loops and ensure correct routing upon state change.
+    // Keeping it could cause conflicts. AuthContext is the single source of truth for auth-based routing.
+
   }, [isAuthenticated, user, isLoading, router, pathname, isMounted, isPartnerRoleSelectionPending]);
 
 
