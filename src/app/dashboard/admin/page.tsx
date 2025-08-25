@@ -6,15 +6,17 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { Bar, BarChart, CartesianGrid, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend, Cell } from 'recharts';
+import Image from 'next/image';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Users, Activity, BarChart2, Settings, Shield, Loader2, DollarSign, ArrowUpRight, ArrowDownRight, Briefcase } from 'lucide-react';
+import { Users, Activity, BarChart2, Settings, Shield, Loader2, DollarSign, ArrowUpRight, ArrowDownRight, Briefcase, Map, Wand2, UserPlus, Plane, Hotel as HotelIcon, Train } from 'lucide-react';
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { toast } from '@/hooks/use-toast';
 
-// Mock Data for Charts
+// Mock Data for Charts and Tables
 const revenueData = [
   { month: 'Jan', revenue: 45000 },
   { month: 'Feb', revenue: 52000 },
@@ -48,41 +50,28 @@ const recentSales = [
     { id: 'sale05', user: 'Michael Brown', email: 'michael@example.com', amount: '₹750', service: 'Cab' },
 ];
 
+const activityFeed = [
+    { id: 1, icon: UserPlus, description: 'New user registered: sarah@example.com', time: '2m ago' },
+    { id: 2, icon: Plane, description: 'New flight booking (#FL7890) for ₹15,200', time: '5m ago' },
+    { id: 3, icon: Briefcase, description: 'New partner signed up: Global Travels', time: '1h ago' },
+    { id: 4, icon: HotelIcon, description: 'New hotel booking (#HTL456) for ₹9,800', time: '3h ago' },
+    { id: 5, icon: Train, description: 'New train booking (#TRN123) for ₹2,100', time: '5h ago' },
+];
 
 const revenueChartConfig: ChartConfig = {
-  revenue: {
-    label: "Revenue",
-    color: "hsl(var(--chart-1))",
-  },
+  revenue: { label: "Revenue", color: "hsl(var(--chart-1))" },
 };
 
 const userGrowthChartConfig: ChartConfig = {
-    users: {
-        label: "New Users",
-        color: "hsl(var(--chart-2))",
-    }
+    users: { label: "New Users", color: "hsl(var(--chart-2))" }
 }
 
 const bookingChartConfig: ChartConfig = {
-  value: {
-    label: "Bookings",
-  },
-  flights: {
-    label: "Flights",
-    color: "hsl(var(--chart-1))",
-  },
-  hotels: {
-    label: "Hotels",
-    color: "hsl(var(--chart-2))",
-  },
-  trains: {
-    label: "Trains",
-    color: "hsl(var(--chart-3))",
-  },
-  cabs: {
-    label: "Cabs",
-    color: "hsl(var(--chart-4))",
-  },
+  value: { label: "Bookings" },
+  flights: { label: "Flights", color: "hsl(var(--chart-1))" },
+  hotels: { label: "Hotels", color: "hsl(var(--chart-2))" },
+  trains: { label: "Trains", color: "hsl(var(--chart-3))" },
+  cabs: { label: "Cabs", color: "hsl(var(--chart-4))" },
 }
 
 
@@ -235,6 +224,43 @@ export default function AdminDashboardPage() {
                        </ChartContainer>
                     </CardContent>
                 </Card>
+                 <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center"><Wand2 className="mr-2 h-5 w-5 text-primary" /> AI-Powered Insights</CardTitle>
+                        <CardDescription>Actionable suggestions based on current data.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-2 text-sm">
+                        <p><strong>Suggestion:</strong> Flight bookings to Goa are up 25% this month. Consider launching a targeted hotel promotion for Goa to maximize revenue.</p>
+                        <p><strong>Alert:</strong> User registrations have slowed down by 10% this week. A new sign-up bonus could re-engage potential customers.</p>
+                    </CardContent>
+                </Card>
+                <Card className="xl:col-span-2">
+                    <CardHeader>
+                        <CardTitle>Real-time Activity Feed</CardTitle>
+                        <CardDescription>A live feed of important events on the platform.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Event</TableHead>
+                                    <TableHead>Time</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {activityFeed.map(activity => (
+                                    <TableRow key={activity.id}>
+                                        <TableCell className="flex items-center gap-2">
+                                            <activity.icon className="h-4 w-4 text-muted-foreground" />
+                                            <span>{activity.description}</span>
+                                        </TableCell>
+                                        <TableCell className="text-right text-muted-foreground">{activity.time}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
             </div>
              <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
                 <Card>
@@ -249,7 +275,18 @@ export default function AdminDashboardPage() {
                     </Button>
                   </CardContent>
                 </Card>
-
+                 <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Partner Management</CardTitle>
+                    <Briefcase className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-xs text-muted-foreground">View and manage all partners.</p>
+                    <Button asChild variant="outline" className="mt-4 w-full">
+                      <Link href="/admin/partners">Manage Partners</Link>
+                    </Button>
+                  </CardContent>
+                </Card>
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">System Settings</CardTitle>
@@ -262,18 +299,14 @@ export default function AdminDashboardPage() {
                     </Button>
                   </CardContent>
                 </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Security</CardTitle>
-                    <Shield className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-xs text-muted-foreground">View security logs and settings.</p>
-                     <Button asChild className="mt-4 w-full">
-                      <Link href="/admin/security">Security Center</Link>
-                    </Button>
-                  </CardContent>
+                <Card className="xl:col-span-3">
+                    <CardHeader>
+                       <CardTitle className="flex items-center"><Map className="mr-2 h-5 w-5 text-primary" /> Geographic Booking Hotspots</CardTitle>
+                       <CardDescription>Top booking locations visualized on a map.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex items-center justify-center p-2">
+                        <Image src="https://placehold.co/1200x600.png" width={1200} height={600} alt="Map of booking hotspots" className="rounded-md" data-ai-hint="world map" />
+                    </CardContent>
                 </Card>
              </div>
         </main>
