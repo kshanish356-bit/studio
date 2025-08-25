@@ -16,7 +16,7 @@ import {
   sendPasswordResetEmail
 } from 'firebase/auth';
 
-export type PartnerRole = 'cabDriver' | 'agent' | 'houseRent' | 'partnerAdmin' | '';
+export type PartnerRole = 'cabDriver' | 'agent' | 'houseRent' | '';
 
 
 interface User {
@@ -24,16 +24,16 @@ interface User {
   name: string | null;
   email: string | null;
   image?: string | null;
-  primaryRole?: 'user' | 'partner' | null;
+  primaryRole?: 'user' | 'partner' | 'admin' | null;
   partnerRole?: PartnerRole | null;
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, pass: string) => Promise<void>;
+  login: (email: string, pass: string, intent?: 'user' | 'partner' | 'admin') => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (updatedData: Partial<Pick<User, 'name' | 'image'>>) => Promise<void>;
-  signup: (email: string, pass: string, name: string, primaryRole: 'user' | 'partner', partnerRole?: PartnerRole) => Promise<User | null>;
+  signup: (email: string, pass: string, name: string, primaryRole: 'user' | 'partner' | 'admin', partnerRole?: PartnerRole) => Promise<User | null>;
   resetPassword: (email: string) => Promise<void>;
   setPartnerSubRole: (subRole: PartnerRole) => Promise<void>;
   isAuthenticated: boolean;
@@ -108,13 +108,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => unsubscribe();
   }, [fetchUserRoleData]);
 
-  const login = async (email: string, pass: string) => {
+  const login = async (email: string, pass: string, intent: 'user' | 'partner' | 'admin' = 'user') => {
     setIsSubmitting(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, pass);
-      // onAuthStateChanged will handle setting user state and fetching roles
+      const uid = userCredential.user.uid;
+      
+      // Manually fetch role after login to ensure immediate redirection logic is correct
+      const roleResponse = await fetch(`/api/user-role/${uid}`);
+      const roleData = await roleResponse.json();
+
+      // Update user state immediately after fetching role
+      setUser({
+        id: uid,
+        name: roleData.name || userCredential.user.displayName,
+        email: roleData.email || userCredential.user.email,
+        image: userCredential.user.photoURL,
+        primaryRole: roleData.primaryRole,
+        partnerRole: roleData.partnerRole,
+      });
+
       toast({ title: "Login Successful", description: `Welcome back!` });
-      // Redirection is handled by AppHeader based on updated context
+      
+      // Redirection logic
+      if (intent === 'admin' && roleData.primaryRole === 'admin') {
+          router.push('/dashboard/admin');
+      } else if (intent === 'partner' && roleData.primaryRole === 'partner') {
+          if (roleData.partnerRole) {
+              switch (roleData.partnerRole) {
+                  case 'cabDriver':
+                      router.push('/dashboard/cab-driver');
+                      break;
+                  case 'houseRent':
+                      router.push('/dashboard/house-rent');
+                      break;
+                  case 'agent':
+                      router.push('/dashboard/agent');
+                      break;
+                  default:
+                      router.push('/dashboard');
+              }
+          } else {
+              router.push('/partner/select-role');
+          }
+      } else {
+          router.push('/dashboard');
+      }
+
     } catch (error: any) {
       console.error("Login error:", error);
       const errorMessage = error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password'
@@ -127,7 +167,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signup = async (email: string, pass: string, name: string, primaryRole: 'user' | 'partner', partnerRole?: PartnerRole) => {
+  const signup = async (email: string, pass: string, name: string, primaryRole: 'user' | 'partner' | 'admin', partnerRole?: PartnerRole) => {
     setIsSubmitting(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
@@ -143,6 +183,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         rolePayload.partnerRole = null;
       }
+       if (primaryRole === 'admin') {
+        rolePayload.primaryRole = 'admin';
+        rolePayload.partnerRole = null; // Admins don't have a partner sub-role
+      }
+
 
       const roleResponse = await fetch(`/api/user-role/${userCredential.user.uid}`, {
         method: 'POST',
@@ -155,8 +200,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error(errorData.message || 'Failed to set user role after signup.');
       }
       
-      // onAuthStateChanged will pick up the new user and trigger fetchUserRoleData
-      // which now includes the role set during this signup process.
+      // After signup, onAuthStateChanged will set the user state.
+      // Now, redirect based on the role they signed up with.
+      if (primaryRole === 'admin') {
+        router.push('/dashboard/admin');
+      } else if (primaryRole === 'partner') {
+        if (partnerRole) {
+          switch (partnerRole) {
+              case 'cabDriver':
+                  router.push('/dashboard/cab-driver');
+                  break;
+              case 'houseRent':
+                  router.push('/dashboard/house-rent');
+                  break;
+              case 'agent':
+                  router.push('/dashboard/agent');
+                  break;
+              default:
+                  router.push('/partner/select-role'); // Fallback to role selection
+          }
+        } else {
+          router.push('/partner/select-role');
+        }
+      } else { // 'user'
+        router.push('/dashboard');
+      }
+
       // Return a basic user object, full context update comes from onAuthStateChanged
       return {
         id: userCredential.user.uid,

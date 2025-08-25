@@ -21,10 +21,16 @@ export default function SelectPartnerRolePage() {
       router.push('/');
     } else if (!isLoading && isAuthenticated && user && (user.primaryRole !== 'partner' || user.partnerRole)) {
       toast({ title: "Role Already Set or Not Applicable", description: "Redirecting to your dashboard.", variant: "default" });
-      if (user.primaryRole === 'user') {
-        router.push('/dashboard');
+      if (user.primaryRole === 'user' || user.primaryRole === 'admin') {
+        const dashboardPath = `/dashboard${user.primaryRole === 'admin' ? '/admin' : '' }`
+        router.push(dashboardPath);
       } else if (user.primaryRole === 'partner' && user.partnerRole) {
-        const dashboardPath = `/dashboard/${user.partnerRole.toLowerCase().replace(/\s+/g, '-')}`;
+        let dashboardPath = '/dashboard'; // Fallback
+          switch (user.partnerRole) {
+            case 'cabDriver': dashboardPath = '/dashboard/cab-driver'; break;
+            case 'agent': dashboardPath = '/dashboard/agent'; break;
+            case 'houseRent': dashboardPath = '/dashboard/house-rent'; break;
+          }
         router.push(dashboardPath);
       } else {
         router.push('/'); 
@@ -67,8 +73,7 @@ export default function SelectPartnerRolePage() {
   const partnerRoles = [
     { role: 'cabDriver' as PartnerRole, label: 'Cab Driver', icon: Car, dashboardPath: '/dashboard/cab-driver' },
     { role: 'agent' as PartnerRole, label: 'Travel Agent', icon: Briefcase, dashboardPath: '/dashboard/agent' },
-    { role: 'houseRent' as PartnerRole, label: 'House Rent Partner', icon: Building, dashboardPath: '/dashboard' }, // Assuming generic dashboard for now
-    { role: 'partnerAdmin' as PartnerRole, label: 'Partner Admin', icon: Users, dashboardPath: '/dashboard/partner-admin' },
+    { role: 'houseRent' as PartnerRole, label: 'House Rent Partner', icon: Building, dashboardPath: '/dashboard/house-rent' },
   ];
 
   return (
