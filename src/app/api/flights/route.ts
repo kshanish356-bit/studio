@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ message: 'Missing required query parameters: from, to, date' }, { status: 400 });
   }
 
-  const apiKey = process.env.AVIATIONSTACK_API_KEY;
+  const apiKey = process.env.API_KEY;
 
   if (!apiKey || apiKey === 'YOUR_AVIATIONSTACK_API_KEY') {
     console.warn('AviationStack API key is not configured.');
