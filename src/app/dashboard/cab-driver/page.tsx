@@ -8,15 +8,18 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faCar, faStar, faCalendarDays, faWallet, faHistory, faCog, faConciergeBell, faMicrophone,
   faSearch, faLocationArrow, faPlus, faMinus, faVolumeUp, faMapMarkerAlt, faFlagCheckered,
-  faMoneyBillWave, faInfoCircle, faComment, faPhone, faTimes, faBell
+  faMoneyBillWave, faInfoCircle, faComment, faPhone, faTimes, faBell, faCheck, faBan, faRoute
 } from '@fortawesome/free-solid-svg-icons';
 
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-// import { useAuth } from '@/contexts/AuthContext'; // Uncomment when integrating auth
+import { useAuth } from '@/contexts/AuthContext';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 declare global {
   interface Window {
@@ -24,48 +27,45 @@ declare global {
   }
 }
 
-const MAP_MY_INDIA_API_KEY = process.env.NEXT_PUBLIC_MAP_MY_INDIA_API_KEY || 'YOUR_MAP_MY_INDIA_API_KEY_HERE';
+const MAP_MY_INDIA_API_KEY = process.env.NEXT_PUBLIC_MAP_MY_INDIA_API_KEY || 'b8558b6a01dd83cc4de527d1a5948af8';
 
-// Mock Data - Replace with actual data from context/API
 const mockDriver = {
   name: "John Driver",
   email: "john.driver@example.com",
-  avatar: "https://placehold.co/120x120.png", // Replaced with placeholder
+  avatar: "https://placehold.co/120x120.png",
   aiHint: "driver avatar",
   rating: "4.92",
   trips: "1245",
   experience: "5 Years"
 };
 
-const mockCurrentTripData = {
-  passengerName: "Jane Passenger",
-  passengerAvatar: "https://placehold.co/70x70.png", // Replaced with placeholder
-  passengerAiHint: "person avatar",
-  isVip: true,
-  status: "In Transit", // "waiting", "accepted", "on_trip"
-  pickupAddress: "123 Main Street, Central District",
-  destinationAddress: "456 Central Park, Downtown",
-  paymentAmount: 1550.00, // Example amount in INR
-  paymentStatus: "Paid",
-  timer: "08:24",
-  pickup: { lat: 20.5937, lng: 78.9629 }, // Example coords
-  dropoff: { lat: 20.6000, lng: 78.9700 } // Example coords
-};
+interface MapplsLatLng {
+  lat: number;
+  lng: number;
+}
 
+interface Ride {
+  id: string;
+  from: string;
+  to:string;
+  time: string;
+  status: 'Pending' | 'Accepted' | 'Ongoing' | 'Completed' | 'Cancelled';
+  fare?: string;
+  pickupCoords?: MapplsLatLng;
+  dropoffCoords?: MapplsLatLng;
+}
 
 export default function CabDriverDashboardPage() {
-  // const { user, logout } = useAuth(); // Uncomment when integrating auth
+  const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
-  const [isOnline, setIsOnline] = useState(false);
-  const [driverName, setDriverName] = useState(mockDriver.name); 
-  const [driverAvatar, setDriverAvatar] = useState(mockDriver.avatar);
-  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
-  
-  // Simulated earnings
-  const [earnings, setEarnings] = useState({ daily: 1250.75, weekly: 7560.50, monthly: 30250.00 });
-  // Simulated current ride - can be null or an object
-  const [currentRide, setCurrentRide] = useState<typeof mockCurrentTripData | null>(mockCurrentTripData);
+  const router = useRouter();
 
+  const [isOnline, setIsOnline] = useState(false);
+  const [driverLocation, setDriverLocation] = useState<MapplsLatLng>({ lat: 28.6139, lng: 77.2090 }); // Default to Delhi
+  
+  const [availableRides, setAvailableRides] = useState<Ride[]>([]);
+  const [currentRide, setCurrentRide] = useState<Ride | null>(null);
+  const [isLoadingRides, setIsLoadingRides] = useState(false);
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -73,25 +73,53 @@ export default function CabDriverDashboardPage() {
   const pickupMarkerRef = useRef<any>(null);
   const dropoffMarkerRef = useRef<any>(null);
   const routePolylineRef = useRef<any>(null);
+  const locationIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [driverLocation, setDriverLocation] = useState({ lat: 20.5937, lng: 78.9629 }); // Default to India center
-  const [searchInput, setSearchInput] = useState('');
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(value);
-  };
-
-  // Simulate active trip and status change after 1 second
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsOnline(true);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, []);
+    if (!authLoading && (!user || user.primaryRole !== 'partner' || user.partnerRole !== 'cabDriver')) {
+      toast({ title: "Access Denied", description: "You are not authorized for this page.", variant: "destructive" });
+      router.push('/');
+    }
+  }, [user, authLoading, router, toast]);
 
-  // Map Initialization and Driver Marker
+  const fetchRides = useCallback(async () => {
+    setIsLoadingRides(true);
+    try {
+      const response = await fetch('/api/driver/rides');
+      if (!response.ok) throw new Error('Failed to fetch rides');
+      let rides: Ride[] = await response.json();
+      
+      rides = rides.map(ride => ({
+        ...ride,
+        // Add mock coords if not present for demo
+        pickupCoords: ride.pickupCoords || { lat: 28.6304, lng: 77.2177 }, // Connaught Place
+        dropoffCoords: ride.dropoffCoords || { lat: 28.5562, lng: 77.1000 } // IGI Airport
+      }));
+
+      const pendingRides = rides.filter(r => r.status === 'Pending');
+      const acceptedRide = rides.find(r => ['Accepted', 'Ongoing'].includes(r.status));
+      
+      setAvailableRides(pendingRides);
+      setCurrentRide(acceptedRide || null);
+    } catch (error) {
+      toast({ title: "Error Fetching Rides", description: (error as Error).message, variant: "destructive" });
+    } finally {
+      setIsLoadingRides(false);
+    }
+  }, [toast]);
+  
   useEffect(() => {
-    if (MAP_MY_INDIA_API_KEY && MAP_MY_INDIA_API_KEY !== 'YOUR_MAP_MY_INDIA_API_KEY_HERE' && typeof window.mappls !== 'undefined' && mapContainerRef.current && !mapInstanceRef.current) {
+    if (isOnline) {
+      fetchRides();
+    } else {
+      setAvailableRides([]);
+      setCurrentRide(null);
+    }
+  }, [isOnline, fetchRides]);
+
+  // Map Initialization
+  useEffect(() => {
+    if (MAP_MY_INDIA_API_KEY && typeof window.mappls !== 'undefined' && mapContainerRef.current && !mapInstanceRef.current) {
       mapInstanceRef.current = new window.mappls.Map(mapContainerRef.current, {
         center: driverLocation,
         zoom: 12,
@@ -101,269 +129,185 @@ export default function CabDriverDashboardPage() {
           driverMarkerRef.current = new window.mappls.Marker({
             map: mapInstanceRef.current,
             position: driverLocation,
-            icon_options: { // Placeholder for a cab icon
-               html: '<div style="font-size:24px;">🚕</div>', 
-               width: 30, 
-               height: 30 
-            }
+            icon_options: { html: '<div style="font-size:24px;">🚕</div>', width: 30, height: 30 }
           });
         }
       });
     }
     return () => {
-      if (mapInstanceRef.current && typeof mapInstanceRef.current.destroy === 'function') {
-        mapInstanceRef.current.destroy();
-        mapInstanceRef.current = null;
-        driverMarkerRef.current = null;
-      }
+      if (mapInstanceRef.current?.destroy) mapInstanceRef.current.destroy();
+      mapInstanceRef.current = null;
+      if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
     };
-  }, [driverLocation]); // Re-run if driverLocation changes (for initial centering)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Update driver marker position on map
+  // Simulate driver movement
+  useEffect(() => {
+    if (isOnline && currentRide?.status === 'Ongoing') {
+      if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
+      locationIntervalRef.current = setInterval(() => {
+        setDriverLocation(prevLoc => {
+          const newLat = prevLoc.lat + (Math.random() - 0.5) * 0.001;
+          const newLng = prevLoc.lng + (Math.random() - 0.5) * 0.001;
+          return { lat: newLat, lng: newLng };
+        });
+      }, 3000); // Update every 3 seconds
+    } else {
+      if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
+    }
+    return () => { if (locationIntervalRef.current) clearInterval(locationIntervalRef.current) };
+  }, [isOnline, currentRide]);
+
+  // Update marker position on map
   useEffect(() => {
     if (driverMarkerRef.current && mapInstanceRef.current) {
       driverMarkerRef.current.setLngLat(driverLocation);
+      // Optional: center map on driver
+      // mapInstanceRef.current.setCenter(driverLocation);
     }
   }, [driverLocation]);
+
 
   // Update ride markers and polyline
   useEffect(() => {
     if (mapInstanceRef.current && window.mappls) {
-      // Clear existing ride markers/polyline
       if (pickupMarkerRef.current) pickupMarkerRef.current.remove();
       if (dropoffMarkerRef.current) dropoffMarkerRef.current.remove();
       if (routePolylineRef.current) routePolylineRef.current.remove();
 
-      if (currentRide) {
+      if (currentRide && currentRide.pickupCoords && currentRide.dropoffCoords) {
         pickupMarkerRef.current = new window.mappls.Marker({
           map: mapInstanceRef.current,
-          position: currentRide.pickup,
+          position: currentRide.pickupCoords,
           icon_options: { html: '<div style="font-size:20px; color:green;">📍</div>', width:24, height:24 },
           title: "Pickup"
         });
         dropoffMarkerRef.current = new window.mappls.Marker({
           map: mapInstanceRef.current,
-          position: currentRide.dropoff,
+          position: currentRide.dropoffCoords,
           icon_options: { html: '<div style="font-size:20px; color:red;">🏁</div>', width:24, height:24 },
           title: "Dropoff"
         });
-        // Simple straight line polyline for now
-        // routePolylineRef.current = new window.mappls.Polyline({
-        //   map: mapInstanceRef.current,
-        //   path: [currentRide.pickup, currentRide.dropoff],
-        //   color: '#007bff',
-        //   weight: 4
-        // });
-        // mapInstanceRef.current.fitBounds([currentRide.pickup, currentRide.dropoff], {padding: 50});
+        
+        mapInstanceRef.current.fitBounds([driverLocation, currentRide.pickupCoords, currentRide.dropoffCoords], {padding: 50});
       }
     }
-  }, [currentRide]);
+  }, [currentRide, driverLocation]);
 
   const handleStatusToggle = (checked: boolean) => {
     setIsOnline(checked);
     toast({ title: "Status Updated", description: `You are now ${checked ? 'Online' : 'Offline'}.` });
   };
-
-  const handleEmergency = () => {
-    // Simulate visual feedback
-    document.body.classList.add('bg-red-200');
-    setTimeout(() => {
-      document.body.classList.remove('bg-red-200');
-    }, 500);
-    toast({ title: "Emergency Signal Sent!", description: "Help is on the way (simulated).", variant: "destructive" });
-  };
-
-  const handleLocate = () => {
-    if (mapInstanceRef.current && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const newLoc = { lat: position.coords.latitude, lng: position.coords.longitude };
-          setDriverLocation(newLoc);
-          if (mapInstanceRef.current) {
-            mapInstanceRef.current.setCenter(newLoc);
-            mapInstanceRef.current.setZoom(15);
-          }
-          toast({title: "Location Updated", description: "Map centered to your current location."})
-        },
-        () => {
-          toast({title: "Location Error", description: "Could not get your location.", variant: "destructive"});
-        }
-      );
+  
+  const handleRideUpdate = async (rideId: string, newStatus: Ride['status']) => {
+    try {
+      const response = await fetch('/api/driver/rides', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rideId, newStatus }),
+      });
+      if (!response.ok) throw new Error('Failed to update ride status');
+      
+      toast({ title: 'Ride Updated', description: `Ride has been ${newStatus}.` });
+      fetchRides(); // Re-fetch all rides to update state
+    } catch (error) {
+       toast({ title: 'Update Failed', description: (error as Error).message, variant: 'destructive' });
     }
   };
-  const handleZoomIn = () => mapInstanceRef.current?.setZoom(mapInstanceRef.current.getZoom() + 1);
-  const handleZoomOut = () => mapInstanceRef.current?.setZoom(mapInstanceRef.current.getZoom() - 1);
-  
-  const handleSidebarButtonClick = (action: string) => {
-    toast({title: "Action Clicked", description: `${action} (placeholder)`});
+
+
+  if (authLoading || !user) {
+    return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
 
   return (
     <>
-      <Script
-        src={`https://apis.mapmyindia.com/advancedmaps/v1/${MAP_MY_INDIA_API_KEY}/map_sdk.js`}
-        strategy="beforeInteractive" // Load before page is interactive
-        onLoad={() => {
-          // console.log("MapMyIndia SDK loaded for Cab Driver Dashboard");
-        }}
-      />
-      <div className="flex flex-col h-screen max-w-[1600px] mx-auto bg-white shadow-lg overflow-hidden font-['Segoe_UI',_Tahoma,_Geneva,_Verdana,_sans-serif] text-[#333]">
-        {/* Header */}
-        <header className="bg-gradient-to-r from-[#1a2a6c] to-[#2a5298] text-white p-[15px_25px] flex justify-between items-center shadow-[0_2px_10px_rgba(0,0,0,0.2)] relative z-10">
-          <div className="flex justify-between items-center w-full">
-            <div className="flex items-center gap-[10px] text-2xl font-semibold">
-              <FontAwesomeIcon icon={faCar} className="text-3xl" />
-              <span>DriveNow Driver</span>
-            </div>
-            <div className="flex items-center gap-[10px] text-lg">
-              <span>Driver Status: <span id="status-text">{isOnline ? 'Online' : 'Offline'}</span></span>
-              <Switch
-                checked={isOnline}
-                onCheckedChange={handleStatusToggle}
-                id="status-toggle"
-                className="data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-gray-300 w-[60px] h-[30px]"
-              />
-            </div>
-          </div>
-        </header>
+      <Script src={`https://apis.mapmyindia.com/advancedmaps/v1/${MAP_MY_INDIA_API_KEY}/map_sdk.js`} strategy="beforeInteractive" />
+      <div className="flex flex-col md:flex-row h-screen max-w-[1920px] mx-auto bg-gray-100 overflow-hidden text-gray-800">
+        
+        {/* Left Panel - Ride Info */}
+        <aside className="w-full md:w-[380px] bg-white p-4 flex flex-col gap-4 shadow-lg z-10 overflow-y-auto">
+           <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Driver Status</CardTitle>
+              <Switch checked={isOnline} onCheckedChange={handleStatusToggle} />
+            </CardHeader>
+            <CardContent>
+              <p className={`text-lg font-semibold ${isOnline ? 'text-green-600' : 'text-red-600'}`}>
+                You are currently {isOnline ? 'Online' : 'Offline'}
+              </p>
+            </CardContent>
+          </Card>
 
-        {/* Main Content */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Profile Sidebar */}
-          <aside className="w-[300px] bg-gradient-to-b from-[#2c3e50] to-[#1c2833] text-white p-[25px_20px] flex-col gap-[25px] shadow-[2px_0_10px_rgba(0,0,0,0.1)] z-[2] md:flex hidden">
-            <Image src={driverAvatar} alt="Driver Profile" width={120} height={120} className="rounded-full object-cover border-2 border-[#3498db] mx-auto block" data-ai-hint={mockDriver.aiHint} />
-            <h2 className="text-center text-3xl mt-[10px]">{driverName}</h2>
-            <p className="text-center text-[#ecf0f1] opacity-90 text-lg">{mockDriver.email}</p>
-            
-            <div className="flex justify-around bg-[rgba(44,62,80,0.7)] p-[15px_10px] rounded-[10px] mt-[10px]">
-              <span className="flex flex-col items-center gap-[5px] text-lg"><FontAwesomeIcon icon={faStar} className="text-2xl text-[#3498db]" /> {mockDriver.rating}</span>
-              <span className="flex flex-col items-center gap-[5px] text-lg"><FontAwesomeIcon icon={faCar} className="text-2xl text-[#3498db]" /> {mockDriver.trips} Trips</span>
-              <span className="flex flex-col items-center gap-[5px] text-lg"><FontAwesomeIcon icon={faCalendarDays} className="text-2xl text-[#3498db]" /> {mockDriver.experience}</span>
-            </div>
-            
-            <div className={`p-[8px_15px] rounded-[20px] text-center font-bold text-lg my-[10px] ${isOnline ? 'bg-[#27ae60] text-white' : 'bg-[#34495e]'}`}>
-              {isOnline ? 'On Work' : 'Offline'}
-            </div>
-            
-            <nav className="flex flex-col gap-[12px] mt-[10px]">
-              <Button variant="ghost" onClick={() => handleSidebarButtonClick("My Wallet")} className="bg-[rgba(52,73,94,0.6)] text-white p-[14px_20px] rounded-[8px] text-left text-lg flex items-center gap-[12px] justify-start hover:bg-[rgba(41,128,185,0.8)] hover:translate-x-[5px] transition-all">
-                <FontAwesomeIcon icon={faWallet} className="text-xl w-[25px]" /> My Wallet
-              </Button>
-              <Button variant="ghost" onClick={() => handleSidebarButtonClick("History")} className="bg-[rgba(52,73,94,0.6)] text-white p-[14px_20px] rounded-[8px] text-left text-lg flex items-center gap-[12px] justify-start hover:bg-[rgba(41,128,185,0.8)] hover:translate-x-[5px] transition-all">
-                <FontAwesomeIcon icon={faHistory} className="text-xl w-[25px]" /> History
-              </Button>
-              <Button variant="ghost" onClick={() => handleSidebarButtonClick("Car Preferences")} className="bg-[rgba(52,73,94,0.6)] text-white p-[14px_20px] rounded-[8px] text-left text-lg flex items-center gap-[12px] justify-start hover:bg-[rgba(41,128,185,0.8)] hover:translate-x-[5px] transition-all">
-                <FontAwesomeIcon icon={faCog} className="text-xl w-[25px]" /> Car Preferences
-              </Button>
-               <Button variant="ghost" onClick={() => handleSidebarButtonClick("Services")} className="bg-[rgba(52,73,94,0.6)] text-white p-[14px_20px] rounded-[8px] text-left text-lg flex items-center gap-[12px] justify-start hover:bg-[rgba(41,128,185,0.8)] hover:translate-x-[5px] transition-all">
-                <FontAwesomeIcon icon={faConciergeBell} className="text-xl w-[25px]" /> Services
-              </Button>
-            </nav>
-            
-            <Button onClick={() => handleSidebarButtonClick("Mic")} className="bg-[#3498db] w-[60px] h-[60px] rounded-full flex items-center justify-center mt-[20px] mx-auto shadow-[0_4px_10px_rgba(0,0,0,0.2)] hover:bg-[#2980b9] hover:scale-110 transition-all">
-              <FontAwesomeIcon icon={faMicrophone} className="text-3xl text-white" />
-            </Button>
-          </aside>
-
-          {/* Map View */}
-          <div className="flex-1 relative bg-[#2c3e50] overflow-hidden">
-            <div ref={mapContainerRef} className="h-full w-full relative bg-gradient-to-br from-[#1a2980] to-[#26d0ce]">
-              {(!MAP_MY_INDIA_API_KEY || MAP_MY_INDIA_API_KEY === 'YOUR_MAP_MY_INDIA_API_KEY_HERE') && <div className="h-full flex items-center justify-center text-destructive-foreground bg-destructive p-4">MapMyIndia API Key is not configured. Please set NEXT_PUBLIC_MAP_MY_INDIA_API_KEY.</div>}
-            </div>
-            <div className="absolute top-[20px] left-[20px] right-[20px] flex justify-between z-[2]">
-              <div className="bg-white rounded-[30px] p-[12px_20px] flex items-center gap-[10px] shadow-[0_4px_15px_rgba(0,0,0,0.2)] w-full max-w-[400px]">
-                <FontAwesomeIcon icon={faSearch} />
-                <Input type="text" placeholder="Search destination..." className="border-none outline-none text-lg w-full focus-visible:ring-0 focus-visible:ring-offset-0" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} />
-              </div>
-              <div className="flex gap-[15px]">
-                <Button onClick={handleLocate} size="icon" className="bg-white w-[50px] h-[50px] rounded-full flex items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.2)] text-gray-700 hover:translate-y-[-3px] transition-all">
-                  <FontAwesomeIcon icon={faLocationArrow} />
-                </Button>
-                <Button onClick={handleZoomIn} size="icon" className="bg-white w-[50px] h-[50px] rounded-full flex items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.2)] text-gray-700 hover:translate-y-[-3px] transition-all">
-                  <FontAwesomeIcon icon={faPlus} />
-                </Button>
-                <Button onClick={handleZoomOut} size="icon" className="bg-white w-[50px] h-[50px] rounded-full flex items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.2)] text-gray-700 hover:translate-y-[-3px] transition-all">
-                  <FontAwesomeIcon icon={faMinus} />
-                </Button>
-              </div>
-            </div>
-            
-            {/* Simulated Route Marker (Driver location is the primary marker) */}
-            {/* <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-[#e74c3c] rounded-full flex items-center justify-center shadow-[0_0_0_10px_rgba(231,76,60,0.3)] animate-pulse">
-              <FontAwesomeIcon icon={faCar} className="text-white text-2xl" />
-            </div> */}
-            
-            {currentRide && (
-              <div className="absolute bottom-[30px] left-1/2 transform -translate-x-1/2 bg-white p-[15px_25px] rounded-[15px] shadow-[0_5px_20px_rgba(0,0,0,0.3)] flex flex-col items-center max-w-[500px] w-[90%] z-[2]">
-                <span className="text-xl font-semibold mb-[8px] text-[#2c3e50] text-center flex items-center gap-2"><FontAwesomeIcon icon={faVolumeUp} /> Go to {currentRide.status === "on_trip" ? "Destination" : "Pickup"}</span>
-                <span className="text-lg text-[#7f8c8d] text-center">{currentRide.status === "on_trip" ? currentRide.destinationAddress : currentRide.pickupAddress}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Passenger Panel */}
-          {currentRide && (
-            <section className="w-[350px] bg-white p-[25px] flex-col gap-[25px] shadow-[-2px_0_10px_rgba(0,0,0,0.1)] z-[2] md:flex hidden">
-              <div className="flex justify-between items-center pb-[15px] border-b border-[#ecf0f1]">
-                <div className="text-xl text-[#2c3e50] font-semibold">Current Trip</div>
-                <div className="text-gray-600">{currentRide.timer}</div>
-              </div>
-              
-              <div className="bg-[#f8f9fa] rounded-[15px] p-[20px] shadow-[0_4px_10px_rgba(0,0,0,0.05)]">
-                <div className="flex items-center gap-[15px] mb-[20px]">
-                  <Image src={currentRide.passengerAvatar} alt="Passenger" width={70} height={70} className="rounded-full object-cover border-2 border-[#3498db]" data-ai-hint={currentRide.passengerAiHint}/>
-                  <div>
-                    <div className="text-2xl font-semibold">
-                      {currentRide.passengerName}
-                      {currentRide.isVip && <span className="ml-[10px] bg-gradient-to-r from-yellow-400 to-orange-400 text-yellow-900 p-[3px_12px] rounded-[15px] text-sm font-bold">VIP</span>}
-                    </div>
-                    <div className="bg-[#e1f0fa] text-[#3498db] p-[5px_15px] rounded-[20px] text-sm font-semibold inline-block mt-[8px]">{currentRide.status}</div>
-                  </div>
-                </div>
-                
-                <div className="flex gap-[15px] mt-[20px] justify-center">
-                  <Button size="icon" className="bg-[#3498db] text-white w-[50px] h-[50px] rounded-full text-xl hover:scale-110 transition-all active:scale-95">
-                    <FontAwesomeIcon icon={faComment} />
-                  </Button>
-                  <Button size="icon" className="bg-[#2ecc71] text-white w-[50px] h-[50px] rounded-full text-xl hover:scale-110 transition-all active:scale-95">
-                    <FontAwesomeIcon icon={faPhone} />
-                  </Button>
-                  <Button size="icon" className="bg-[#e74c3c] text-white w-[50px] h-[50px] rounded-full text-xl hover:scale-110 transition-all active:scale-95">
-                    <FontAwesomeIcon icon={faTimes} />
-                  </Button>
-                </div>
-              </div>
-              
-              <div className="bg-[#f8f9fa] rounded-[15px] p-[20px] shadow-[0_4px_10px_rgba(0,0,0,0.05)]">
-                <div className="text-lg text-[#7f8c8d] mb-[10px] flex items-center gap-[8px]"><FontAwesomeIcon icon={faMapMarkerAlt} /> Pick up Point</div>
-                <div className="text-lg font-medium text-[#2c3e50] pl-[30px]">{currentRide.pickupAddress}</div>
-                
-                <div className="text-lg text-[#7f8c8d] mt-[15px] mb-[10px] flex items-center gap-[8px]"><FontAwesomeIcon icon={faFlagCheckered} /> Destination</div>
-                <div className="text-lg font-medium text-[#2c3e50] pl-[30px]">{currentRide.destinationAddress}</div>
-              </div>
-              
-              <div className="bg-[#f8f9fa] rounded-[15px] p-[20px] shadow-[0_4px_10px_rgba(0,0,0,0.05)]">
-                <div className="text-lg text-[#7f8c8d] mb-[10px] flex items-center gap-[8px]"><FontAwesomeIcon icon={faMoneyBillWave} /> Passenger Payment</div>
-                <div className="text-3xl font-bold text-[#27ae60] mt-[5px]">{formatCurrency(currentRide.paymentAmount)}</div>
-                <div className="text-lg text-[#7f8c8d] mt-[8px] mb-[10px] flex items-center gap-[8px]"><FontAwesomeIcon icon={faInfoCircle} /> Status</div>
-                <div className="text-lg font-medium text-[#2c3e50] pl-[30px]">{currentRide.paymentStatus}</div>
-              </div>
-            </section>
+          {isOnline && currentRide && (
+            <Card className="border-primary">
+              <CardHeader>
+                <CardTitle>Current Ride: {currentRide.status}</CardTitle>
+                <CardDescription>From: {currentRide.from}</CardDescription>
+                <CardDescription>To: {currentRide.to}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                 <p><strong>Fare:</strong> {currentRide.fare}</p>
+                 <div className="flex gap-2">
+                    {currentRide.status === 'Accepted' && (
+                        <Button onClick={() => handleRideUpdate(currentRide.id, 'Ongoing')} className="flex-1 bg-blue-500 hover:bg-blue-600">Start Trip</Button>
+                    )}
+                    {currentRide.status === 'Ongoing' && (
+                        <Button onClick={() => handleRideUpdate(currentRide.id, 'Completed')} className="flex-1 bg-green-500 hover:bg-green-600">Complete Trip</Button>
+                    )}
+                    {(currentRide.status === 'Accepted' || currentRide.status === 'Ongoing') && (
+                        <Button onClick={() => handleRideUpdate(currentRide.id, 'Cancelled')} variant="destructive" className="flex-1">Cancel</Button>
+                    )}
+                 </div>
+              </CardContent>
+            </Card>
           )}
-           {!currentRide && (
-             <section className="w-[350px] bg-white p-[25px] flex-col gap-[25px] shadow-[-2px_0_10px_rgba(0,0,0,0.1)] z-[2] md:flex hidden items-center justify-center">
-                <p className="text-muted-foreground text-center">No active ride. Waiting for requests...</p>
-             </section>
-           )}
-        </div>
 
-        {/* Footer */}
-        <footer className="bg-[#2c3e50] text-white p-[15px_25px] flex justify-between items-center shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
-          <Button onClick={handleEmergency} className="bg-gradient-to-r from-[#e74c3c] to-[#c0392b] text-white p-[12px_25px] rounded-[30px] text-lg font-semibold flex items-center gap-[10px] shadow-[0_4px_15px_rgba(231,76,60,0.4)] hover:scale-105 hover:shadow-[0_6px_20px_rgba(231,76,60,0.6)] transition-all active:scale-95">
-            <FontAwesomeIcon icon={faBell} /> EMERGENCY
-          </Button>
-          <div className="text-base opacity-80">© {currentYear} DriveNow. All rights reserved.</div>
-        </footer>
+          {isOnline && !currentRide && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Ride Requests</CardTitle>
+                <CardDescription>Available rides nearby.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3 max-h-[50vh] overflow-y-auto">
+                {isLoadingRides && <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin"/></div>}
+                {!isLoadingRides && availableRides.length === 0 && <p className="text-muted-foreground text-center">No pending rides found.</p>}
+                {availableRides.map(ride => (
+                    <div key={ride.id} className="p-3 border rounded-lg bg-secondary/30 space-y-2">
+                        <div>
+                            <p><strong>From:</strong> {ride.from}</p>
+                            <p><strong>To:</strong> {ride.to}</p>
+                        </div>
+                        <p><strong>Fare:</strong> <Badge variant="secondary">{ride.fare}</Badge></p>
+                        <div className="flex gap-2">
+                            <Button size="sm" className="flex-1 bg-green-500 hover:bg-green-600" onClick={() => handleRideUpdate(ride.id, 'Accepted')}>
+                                <FontAwesomeIcon icon={faCheck} className="mr-2 h-3 w-3" /> Accept
+                            </Button>
+                            <Button size="sm" variant="outline" className="flex-1" onClick={() => handleRideUpdate(ride.id, 'Cancelled')}>
+                                <FontAwesomeIcon icon={faBan} className="mr-2 h-3 w-3" /> Decline
+                            </Button>
+                        </div>
+                    </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+        </aside>
+
+        {/* Main Panel - Map */}
+        <main className="flex-1 relative bg-gray-200">
+           <div ref={mapContainerRef} className="h-full w-full">
+              {(!MAP_MY_INDIA_API_KEY || MAP_MY_INDIA_API_KEY.includes('YOUR_')) && <div className="h-full flex items-center justify-center text-destructive-foreground bg-destructive p-4">MapMyIndia API Key is not configured.</div>}
+            </div>
+            <div className="absolute top-4 right-4 flex flex-col gap-2">
+                <Button onClick={() => mapInstanceRef.current?.setZoom(mapInstanceRef.current.getZoom() + 1)} size="icon"><FontAwesomeIcon icon={faPlus}/></Button>
+                <Button onClick={() => mapInstanceRef.current?.setZoom(mapInstanceRef.current.getZoom() - 1)} size="icon"><FontAwesomeIcon icon={faMinus}/></Button>
+                <Button onClick={() => mapInstanceRef.current?.setCenter(driverLocation)} size="icon"><FontAwesomeIcon icon={faLocationArrow}/></Button>
+            </div>
+        </main>
       </div>
     </>
-    
+  );
+}
