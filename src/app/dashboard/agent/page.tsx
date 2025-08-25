@@ -3,13 +3,16 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Users, Briefcase, DollarSign, LineChart as LineChartIcon, Loader2, UserPlus, FileText } from 'lucide-react';
+import { Users, Briefcase, DollarSign, LineChart as LineChartIcon, Loader2, UserPlus, FileText, PlusCircle } from 'lucide-react';
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { toast } from '@/hooks/use-toast';
 
@@ -47,12 +50,56 @@ export default function TravelAgentDashboardPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
+  const [isSubmittingPackage, setIsSubmittingPackage] = useState(false);
+  const [packageTitle, setPackageTitle] = useState('');
+  const [packageDescription, setPackageDescription] = useState('');
+  const [packagePrice, setPackagePrice] = useState('');
+  const [packageDuration, setPackageDuration] = useState('');
+
+
   useEffect(() => {
     if (!isLoading && (!user || user.primaryRole !== 'partner' || user.partnerRole !== 'agent')) {
       toast({ title: "Access Denied", description: "You do not have permission to view this page.", variant: "destructive" });
       router.push('/');
     }
   }, [user, isLoading, router]);
+
+  const handleCreatePackage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!packageTitle || !packageDescription || !packagePrice || !packageDuration) {
+      toast({ title: "Missing Information", description: "Please fill all fields to create a package.", variant: "destructive" });
+      return;
+    }
+    setIsSubmittingPackage(true);
+    try {
+      const response = await fetch('/api/tour-packages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: packageTitle,
+          description: packageDescription,
+          price: Number(packagePrice),
+          duration: packageDuration,
+          createdBy: user?.name || 'Agent',
+          creatorRole: 'agent'
+        }),
+      });
+      if (!response.ok) throw new Error('Failed to create package');
+      
+      toast({ title: "Package Created!", description: "Your new tour package has been listed." });
+      // Reset form
+      setPackageTitle('');
+      setPackageDescription('');
+      setPackagePrice('');
+      setPackageDuration('');
+
+    } catch (error) {
+       toast({ title: "Creation Failed", description: (error as Error).message, variant: 'destructive' });
+    } finally {
+        setIsSubmittingPackage(false);
+    }
+  };
+
 
   if (isLoading || !user) {
     return (
@@ -158,6 +205,38 @@ export default function TravelAgentDashboardPage() {
                 </TableBody>
               </Table>
             </CardContent>
+          </Card>
+           <Card className="xl:col-span-3">
+              <form onSubmit={handleCreatePackage}>
+                  <CardHeader>
+                      <CardTitle>Create New Tour Package</CardTitle>
+                      <CardDescription>Add a new travel package to be displayed on the homepage.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                          <Label htmlFor="pkg-title">Package Title</Label>
+                          <Input id="pkg-title" placeholder="e.g., Golden Triangle Tour" value={packageTitle} onChange={e => setPackageTitle(e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                          <Label htmlFor="pkg-duration">Duration</Label>
+                          <Input id="pkg-duration" placeholder="e.g., 5 Days / 4 Nights" value={packageDuration} onChange={e => setPackageDuration(e.target.value)} />
+                      </div>
+                      <div className="md:col-span-2 space-y-2">
+                          <Label htmlFor="pkg-desc">Description</Label>
+                          <Textarea id="pkg-desc" placeholder="Describe the tour package..." value={packageDescription} onChange={e => setPackageDescription(e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                          <Label htmlFor="pkg-price">Price (INR)</Label>
+                          <Input id="pkg-price" type="number" placeholder="e.g., 25000" value={packagePrice} onChange={e => setPackagePrice(e.target.value)} />
+                      </div>
+                  </CardContent>
+                  <CardFooter>
+                      <Button type="submit" disabled={isSubmittingPackage}>
+                          {isSubmittingPackage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                          Create Package
+                      </Button>
+                  </CardFooter>
+              </form>
           </Card>
         </div>
       </main>

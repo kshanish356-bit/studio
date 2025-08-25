@@ -7,6 +7,7 @@ import Testimonials from '@/components/home/Testimonials';
 import NewsletterSubscription from '@/components/home/NewsletterSubscription';
 import PersonalizedSuggestions from '@/components/home/PersonalizedSuggestions';
 import DailyInspiration from '@/components/home/DailyInspiration';
+import FeaturedTours from '@/components/home/FeaturedTours';
 
 export default function HomePage() {
   return (
@@ -14,6 +15,7 @@ export default function HomePage() {
       <HeroSection />
       <TrainBookingForm />
       <DailyInspiration />
+      <FeaturedTours />
       <PersonalizedSuggestions />
       <FeaturedDestinations />
       <SpecialOffers />

@@ -12,13 +12,15 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2 } from 'lucide-react';
+import { Loader2, PlusCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 declare global {
@@ -28,16 +30,6 @@ declare global {
 }
 
 const MAP_MY_INDIA_API_KEY = process.env.NEXT_PUBLIC_MAP_MY_INDIA_API_KEY || 'b8558b6a01dd83cc4de527d1a5948af8';
-
-const mockDriver = {
-  name: "John Driver",
-  email: "john.driver@example.com",
-  avatar: "https://placehold.co/120x120.png",
-  aiHint: "driver avatar",
-  rating: "4.92",
-  trips: "1245",
-  experience: "5 Years"
-};
 
 interface MapplsLatLng {
   lat: number;
@@ -66,6 +58,13 @@ export default function CabDriverDashboardPage() {
   const [availableRides, setAvailableRides] = useState<Ride[]>([]);
   const [currentRide, setCurrentRide] = useState<Ride | null>(null);
   const [isLoadingRides, setIsLoadingRides] = useState(false);
+
+  // State for creating tour packages
+  const [isSubmittingPackage, setIsSubmittingPackage] = useState(false);
+  const [packageTitle, setPackageTitle] = useState('');
+  const [packageDescription, setPackageDescription] = useState('');
+  const [packagePrice, setPackagePrice] = useState('');
+  const [packageDuration, setPackageDuration] = useState('');
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -163,8 +162,6 @@ export default function CabDriverDashboardPage() {
   useEffect(() => {
     if (driverMarkerRef.current && mapInstanceRef.current) {
       driverMarkerRef.current.setLngLat(driverLocation);
-      // Optional: center map on driver
-      // mapInstanceRef.current.setCenter(driverLocation);
     }
   }, [driverLocation]);
 
@@ -216,6 +213,42 @@ export default function CabDriverDashboardPage() {
     }
   };
 
+  const handleCreatePackage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!packageTitle || !packageDescription || !packagePrice || !packageDuration) {
+      toast({ title: "Missing Information", description: "Please fill all fields to create a package.", variant: "destructive" });
+      return;
+    }
+    setIsSubmittingPackage(true);
+    try {
+      const response = await fetch('/api/tour-packages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: packageTitle,
+          description: packageDescription,
+          price: Number(packagePrice),
+          duration: packageDuration,
+          createdBy: user?.name || 'Driver',
+          creatorRole: 'cabDriver'
+        }),
+      });
+      if (!response.ok) throw new Error('Failed to create package');
+      
+      toast({ title: "Package Created!", description: "Your new city tour package has been listed." });
+      // Reset form
+      setPackageTitle('');
+      setPackageDescription('');
+      setPackagePrice('');
+      setPackageDuration('');
+
+    } catch (error) {
+       toast({ title: "Creation Failed", description: (error as Error).message, variant: 'destructive' });
+    } finally {
+        setIsSubmittingPackage(false);
+    }
+  };
+
 
   if (authLoading || !user) {
     return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -227,7 +260,7 @@ export default function CabDriverDashboardPage() {
       <div className="flex flex-col md:flex-row h-screen max-w-[1920px] mx-auto bg-gray-100 overflow-hidden text-gray-800">
         
         {/* Left Panel - Ride Info */}
-        <aside className="w-full md:w-[380px] bg-white p-4 flex flex-col gap-4 shadow-lg z-10 overflow-y-auto">
+        <aside className="w-full md:w-[420px] bg-white p-4 flex flex-col gap-4 shadow-lg z-10 overflow-y-auto">
            <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Driver Status</CardTitle>
@@ -294,6 +327,40 @@ export default function CabDriverDashboardPage() {
             </Card>
           )}
 
+           <Card>
+              <form onSubmit={handleCreatePackage}>
+                  <CardHeader>
+                      <CardTitle>Create City Tour Package</CardTitle>
+                      <CardDescription>Offer a fixed-rate tour package to customers.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                      <div className="space-y-1">
+                          <Label htmlFor="pkg-title-cab">Package Title</Label>
+                          <Input id="pkg-title-cab" placeholder="e.g., Delhi Sightseeing Tour" value={packageTitle} onChange={e => setPackageTitle(e.target.value)} />
+                      </div>
+                      <div className="space-y-1">
+                          <Label htmlFor="pkg-desc-cab">Description</Label>
+                          <Textarea id="pkg-desc-cab" placeholder="Describe the tour package..." value={packageDescription} onChange={e => setPackageDescription(e.target.value)} />
+                      </div>
+                       <div className="flex gap-4">
+                          <div className="space-y-1 w-1/2">
+                              <Label htmlFor="pkg-duration-cab">Duration</Label>
+                              <Input id="pkg-duration-cab" placeholder="e.g., 8 Hours" value={packageDuration} onChange={e => setPackageDuration(e.target.value)} />
+                          </div>
+                          <div className="space-y-1 w-1/2">
+                              <Label htmlFor="pkg-price-cab">Price (INR)</Label>
+                              <Input id="pkg-price-cab" type="number" placeholder="e.g., 2500" value={packagePrice} onChange={e => setPackagePrice(e.target.value)} />
+                          </div>
+                       </div>
+                  </CardContent>
+                  <CardFooter>
+                      <Button type="submit" disabled={isSubmittingPackage}>
+                          {isSubmittingPackage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                          Create Package
+                      </Button>
+                  </CardFooter>
+              </form>
+          </Card>
         </aside>
 
         {/* Main Panel - Map */}
