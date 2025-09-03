@@ -31,6 +31,7 @@ export default function TrainsPage() {
   const [fromStation, setFromStation] = useState('');
   const [toStation, setToStation] = useState('');
   const [departureDate, setDepartureDate] = useState('');
+  const [returnDate, setReturnDate] = useState('');
   const [classType, setClassType] = useState('sleeper');
   const [passengers, setPassengers] = useState('1');
 
@@ -105,7 +106,7 @@ export default function TrainsPage() {
 
       <section className="py-6 bg-secondary shadow-md">
         <div className="container mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 items-end p-4 bg-card rounded-lg shadow">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end p-4 bg-card rounded-lg shadow">
             <div className="flex flex-col space-y-1">
               <Label htmlFor="fromStation">From Station</Label>
               <Input id="fromStation" placeholder="e.g. Mumbai" value={fromStation} onChange={(e) => setFromStation(e.target.value)} />
@@ -117,6 +118,10 @@ export default function TrainsPage() {
             <div className="flex flex-col space-y-1">
               <Label htmlFor="departureDate">Departure Date</Label>
               <Input id="departureDate" type="date" value={departureDate} onChange={(e) => setDepartureDate(e.target.value)} />
+            </div>
+             <div className="flex flex-col space-y-1">
+              <Label htmlFor="return">Return (Optional)</Label>
+              <Input id="return" type="date" value={returnDate} onChange={(e) => setReturnDate(e.target.value)} />
             </div>
             <div className="flex flex-col space-y-1">
               <Label htmlFor="classType">Class</Label>
@@ -142,7 +147,7 @@ export default function TrainsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={handleSearchTrains} className="w-full lg:w-auto bg-primary hover:bg-primary/90 text-primary-foreground h-10 px-6 py-2 text-base" disabled={isLoading}>
+            <Button onClick={handleSearchTrains} className="w-full lg:col-start-5 bg-primary hover:bg-primary/90 text-primary-foreground h-10 px-6 py-2 text-base" disabled={isLoading}>
               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />} Search
             </Button>
           </div>
