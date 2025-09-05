@@ -5,11 +5,12 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import Image from 'next/image';
-import { ArrowRightLeft, Bus, Search, Sofa, Clock, Filter, Wind, Tv, Plug, Loader2 } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { ArrowLeft, ArrowRightLeft, Bus, Search, Sofa, Clock, Filter, Wind, Tv, Plug, Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import Link from 'next/link';
 
 const mockBuses = [
   { id: 1, operator: 'VRL Travels', type: 'Sleeper, A/C', departure: '21:00', arrival: '06:30', duration: '9h 30m', price: 1250, seats: 15, rating: 4.5, amenities: ['ac', 'tv', 'plug'] },
@@ -29,6 +30,8 @@ export default function BusPage() {
   const [toCity, setToCity] = useState('Hyderabad');
   const [travelDate, setTravelDate] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
+  const [busType, setBusType] = useState('All');
 
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -47,110 +50,103 @@ export default function BusPage() {
   };
   
   return (
-    <div className="bg-secondary/40 min-h-screen">
-       <div className="bg-gradient-to-r from-primary to-blue-600 py-12">
-        <div className="container mx-auto px-4">
-          <Card className="p-6 shadow-xl">
-            <div className="grid grid-cols-1 md:grid-cols-10 gap-4 items-end">
-              <div className="md:col-span-4">
-                <Label htmlFor="fromCity" className="text-muted-foreground">From</Label>
-                <Input id="fromCity" value={fromCity} onChange={e => setFromCity(e.target.value)} className="text-lg h-12" />
-              </div>
-              <div className="md:col-span-1 flex justify-center">
-                 <Button variant="outline" size="icon" onClick={handleSwapCities} className="h-12 w-12 border-2">
-                    <ArrowRightLeft />
-                 </Button>
-              </div>
-              <div className="md:col-span-4">
-                <Label htmlFor="toCity" className="text-muted-foreground">To</Label>
-                <Input id="toCity" value={toCity} onChange={e => setToCity(e.target.value)} className="text-lg h-12" />
-              </div>
-              <div className="md:col-span-3">
-                 <Label htmlFor="travelDate" className="text-muted-foreground">Date of Journey</Label>
-                 <Input id="travelDate" type="date" value={travelDate} onChange={e => setTravelDate(e.target.value)} className="text-lg h-12" />
-              </div>
-              <div className="md:col-span-4" />
-              <Button onClick={handleSearch} className="md:col-span-3 w-full h-12 text-lg" disabled={isLoading}>
-                 {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin"/> : <Search className="mr-2 h-5 w-5" />} Search Buses
-              </Button>
+    <div className="bg-background min-h-screen">
+       <nav className="p-4 container mx-auto">
+        <Link href="/" className="text-primary hover:text-primary/80 font-bold text-lg inline-flex items-center">
+          <ArrowLeft className="mr-1 h-5 w-5"/>
+          Home
+        </Link>
+      </nav>
+
+       <section className="py-6 bg-secondary shadow-md">
+        <div className="container mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end p-4 bg-card rounded-lg shadow">
+            <div className="flex flex-col space-y-1 lg:col-span-2">
+              <Label htmlFor="fromCity">From</Label>
+              <Input id="fromCity" value={fromCity} onChange={e => setFromCity(e.target.value)} />
             </div>
-          </Card>
+             <div className="flex justify-center items-center lg:col-span-1">
+                <Button variant="outline" size="icon" onClick={handleSwapCities} aria-label="Swap cities" className="mt-auto mb-[1px] h-10 w-10 md:mt-6">
+                  <ArrowRightLeft className="h-5 w-5" />
+                </Button>
+            </div>
+            <div className="flex flex-col space-y-1 lg:col-span-2">
+              <Label htmlFor="toCity">To</Label>
+              <Input id="toCity" value={toCity} onChange={e => setToCity(e.target.value)} />
+            </div>
+            <div className="flex flex-col space-y-1 md:col-span-2 lg:col-span-2">
+               <Label htmlFor="travelDate">Date of Journey</Label>
+               <Input id="travelDate" type="date" value={travelDate} onChange={e => setTravelDate(e.target.value)} />
+            </div>
+            <Button onClick={handleSearch} className="w-full lg:col-start-5 bg-primary hover:bg-primary/90 text-primary-foreground h-10 px-6 py-2 text-base" disabled={isLoading}>
+               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Search className="mr-2 h-4 w-5" />} Search
+            </Button>
+          </div>
         </div>
-       </div>
+       </section>
 
-       <main className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          <aside className="lg:col-span-1 bg-background p-6 rounded-lg shadow-lg self-start">
-            <h2 className="text-xl font-bold mb-4 flex items-center"><Filter className="mr-2"/>Filters</h2>
-            <Separator className="mb-4" />
-            <div className="space-y-6">
-               <div>
-                  <h3 className="font-semibold mb-2">Bus Type</h3>
-                  <div className="space-y-2">
-                    {['A/C', 'Non-A/C', 'Seater', 'Sleeper'].map(type => (
-                      <div key={type} className="flex items-center"><Checkbox id={`type-${type}`} /><Label htmlFor={`type-${type}`} className="ml-2">{type}</Label></div>
-                    ))}
-                  </div>
-              </div>
-              <Separator />
-               <div>
-                  <h3 className="font-semibold mb-2">Departure Time</h3>
-                   <div className="space-y-2">
-                    {['Before 6 AM', '6 AM - 12 PM', '12 PM - 6 PM', 'After 6 PM'].map(time => (
-                      <div key={time} className="flex items-center"><Checkbox id={`time-${time}`} /><Label htmlFor={`time-${time}`} className="ml-2">{time}</Label></div>
-                    ))}
-                  </div>
-              </div>
-            </div>
-          </aside>
-
-          <section className="lg:col-span-3 space-y-6">
-            <h3 className="text-xl font-semibold">Showing {mockBuses.length} buses from {fromCity} to {toCity}</h3>
-            {mockBuses.map(bus => (
-              <Card key={bus.id} className="overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300">
-                <div className="grid grid-cols-1 md:grid-cols-6 p-4">
-                  <div className="md:col-span-4 flex flex-col justify-between pr-4">
-                    <div>
-                      <CardTitle className="text-xl">{bus.operator}</CardTitle>
-                      <CardDescription>{bus.type}</CardDescription>
-                      <div className="flex items-center gap-2 mt-2">
-                        {bus.amenities.map(amenity => {
-                          const Icon = amenityIcons[amenity];
-                          return Icon ? <Icon key={amenity} className="h-5 w-5 text-muted-foreground" title={amenity} /> : null;
-                        })}
-                      </div>
-                    </div>
-                     <div className="flex items-center gap-2 text-sm mt-4 text-muted-foreground">
-                        <span className="flex items-center"><Clock className="h-4 w-4 mr-1"/>{bus.duration}</span>
-                        <span>•</span>
-                        <span className="flex items-center"><Sofa className="h-4 w-4 mr-1"/>{bus.seats} Seats left</span>
-                        <span>•</span>
-                        <span className="flex items-center bg-green-600 text-white font-bold py-0.5 px-2 rounded"><Bus className="h-4 w-4 mr-1"/>{bus.rating.toFixed(1)}</span>
-                    </div>
-                  </div>
-                  <div className="md:col-span-2 flex flex-col md:items-end justify-between border-t md:border-t-0 md:border-l pt-4 md:pt-0 md:pl-4 mt-4 md:mt-0">
-                    <div className="flex md:flex-col md:items-end w-full justify-between">
-                       <div className="text-center">
-                          <p className="font-bold text-lg">{bus.departure}</p>
-                          <p className="text-sm text-muted-foreground">From</p>
-                       </div>
-                       <div className="text-center mx-4 text-muted-foreground">→</div>
-                       <div className="text-center">
-                          <p className="font-bold text-lg">{bus.arrival}</p>
-                          <p className="text-sm text-muted-foreground">To</p>
-                       </div>
-                    </div>
-                    <div className="text-right mt-4 w-full">
-                      <p className="text-sm text-muted-foreground">Starting from</p>
-                      <p className="text-2xl font-bold text-primary">₹{bus.price.toLocaleString()}</p>
-                      <Button className="w-full mt-2">View Seats</Button>
-                    </div>
-                  </div>
+       <main className="container mx-auto flex flex-col md:flex-row gap-8 px-4 py-8">
+        <aside className="w-full md:w-1/4 lg:w-1/5 p-6 bg-card rounded-lg shadow-lg self-start">
+          <h2 className="text-2xl font-semibold mb-6 flex items-center"><Filter className="mr-2 h-6 w-6 text-primary"/>Filters</h2>
+          
+          <div className="filter-group mb-6">
+            <h3 className="text-lg font-medium mb-3">Bus Type</h3>
+             <RadioGroup value={busType} onValueChange={setBusType} className="space-y-2">
+              {['All', 'A/C', 'Non-A/C', 'Sleeper', 'Seater'].map(type => (
+                <div key={type} className="flex items-center">
+                  <RadioGroupItem value={type} id={`type-${type}`} />
+                  <Label htmlFor={`type-${type}`} className="ml-2 cursor-pointer">{type}</Label>
                 </div>
-              </Card>
-            ))}
+              ))}
+            </RadioGroup>
+          </div>
+          
+          <div className="filter-group mb-6">
+            <h3 className="text-lg font-medium mb-3">Departure Time</h3>
+             <div className="space-y-2">
+              {['Before 6 AM', '6 AM - 12 PM', '12 PM - 6 PM', 'After 6 PM'].map(time => (
+                <div key={time} className="flex items-center"><Checkbox id={`time-${time}`} /><Label htmlFor={`time-${time}`} className="ml-2">{time}</Label></div>
+              ))}
+            </div>
+          </div>
+        </aside>
+
+        <section className="flex-grow w-full md:w-3/4 lg:w-4/5">
+            <h2 className="text-2xl font-semibold mb-6 flex items-center"><Bus className="mr-2 h-6 w-6 text-primary"/> Available Buses</h2>
+             {isLoading && (
+               <div className="flex justify-center items-center h-64">
+                  <Loader2 className="h-12 w-12 animate-spin text-primary" />
+               </div>
+            )}
+            {!isLoading && mockBuses.length === 0 && (
+              <div className="text-center py-10 bg-card rounded-lg shadow">
+                <p className="text-muted-foreground">No buses found for your criteria. Please try adjusting your search or filters.</p>
+              </div>
+            )}
+            {!isLoading && mockBuses.length > 0 && (
+              <div className="space-y-6">
+                {mockBuses.map(bus => (
+                  <div key={bus.id} className="bg-card p-6 rounded-lg shadow-lg flex flex-col sm:flex-row justify-between items-center">
+                    <div className="bus-card-info mb-4 sm:mb-0">
+                      <h3 className="text-xl font-semibold text-primary">{bus.operator}</h3>
+                      <p className="text-sm text-muted-foreground">{bus.type}</p>
+                      <p className="text-muted-foreground mt-2">Departure: {bus.departure}</p>
+                      <p className="text-muted-foreground">Arrival: {bus.arrival}</p>
+                       <div className="flex items-center gap-2 mt-2">
+                          <span className="flex items-center text-sm text-muted-foreground"><Clock className="h-4 w-4 mr-1"/>{bus.duration}</span>
+                          <span className="text-muted-foreground">•</span>
+                          <span className="flex items-center text-sm text-muted-foreground"><Sofa className="h-4 w-4 mr-1"/>{bus.seats} Seats left</span>
+                       </div>
+                    </div>
+                    <div className="bus-card-price text-center sm:text-right">
+                      <h3 className="text-2xl font-bold text-accent mb-2">₹{bus.price.toLocaleString()}</h3>
+                      <Button variant="outline">View Seats</Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
-        </div>
        </main>
     </div>
   );
