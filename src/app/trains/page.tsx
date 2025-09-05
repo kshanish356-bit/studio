@@ -32,8 +32,7 @@ export default function TrainsPage() {
   const [toStation, setToStation] = useState('');
   const [departureDate, setDepartureDate] = useState('');
   const [returnDate, setReturnDate] = useState('');
-  const [classType, setClassType] = useState('sleeper');
-  const [passengers, setPassengers] = useState('1');
+  const [passengersClass, setPassengersClass] = useState('1-ALL');
 
   // Filter state
   const [quota, setQuota] = useState('General');
@@ -123,27 +122,17 @@ export default function TrainsPage() {
               <Label htmlFor="return">Return (Optional)</Label>
               <Input id="return" type="date" value={returnDate} onChange={(e) => setReturnDate(e.target.value)} />
             </div>
-            <div className="flex flex-col space-y-1">
-              <Label htmlFor="classType">Class</Label>
-              <Select value={classType} onValueChange={setClassType}>
-                <SelectTrigger id="classType"><SelectValue placeholder="Select Class" /></SelectTrigger>
+            <div className="flex flex-col space-y-1 col-span-1 md:col-span-2 lg:col-span-1">
+              <Label htmlFor="passengersClass">Passengers & Class</Label>
+              <Select value={passengersClass} onValueChange={setPassengersClass}>
+                <SelectTrigger id="passengersClass"><SelectValue placeholder="Select" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="sleeper">Sleeper</SelectItem>
-                  <SelectItem value="ac">AC</SelectItem>
-                  <SelectItem value="firstClass">First Class</SelectItem>
-                  <SelectItem value="ALL">All Classes</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex flex-col space-y-1">
-              <Label htmlFor="passengers">Passengers</Label>
-              <Select value={passengers} onValueChange={setPassengers}>
-                <SelectTrigger id="passengers"><SelectValue placeholder="Select Passengers" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">1 Passenger</SelectItem>
-                  <SelectItem value="2">2 Passengers</SelectItem>
-                  <SelectItem value="3">3 Passengers</SelectItem>
-                  <SelectItem value="4">4 Passengers</SelectItem>
+                  <SelectItem value="1-ALL">1 Passenger, All Classes</SelectItem>
+                  <SelectItem value="1-SL">1 Passenger, Sleeper</SelectItem>
+                  <SelectItem value="1-3A">1 Passenger, AC 3-Tier</SelectItem>
+                  <SelectItem value="2-ALL">2 Passengers, All Classes</SelectItem>
+                  <SelectItem value="2-SL">2 Passengers, Sleeper</SelectItem>
+                  <SelectItem value="2-3A">2 Passengers, AC 3-Tier</SelectItem>
                 </SelectContent>
               </Select>
             </div>
