@@ -11,6 +11,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ArrowLeft, ArrowRightLeft, Bus, Search, Sofa, Clock, Filter, Wind, Tv, Plug, Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const mockBuses = [
   { id: 1, operator: 'VRL Travels', type: 'Sleeper, A/C', departure: '21:00', arrival: '06:30', duration: '9h 30m', price: 1250, seats: 15, rating: 4.5, amenities: ['ac', 'tv', 'plug'] },
@@ -29,6 +30,8 @@ export default function BusPage() {
   const [fromCity, setFromCity] = useState('Bangalore');
   const [toCity, setToCity] = useState('Hyderabad');
   const [travelDate, setTravelDate] = useState('');
+  const [returnDate, setReturnDate] = useState('');
+  const [passengersSeatType, setPassengersSeatType] = useState('1-ALL');
   const [isLoading, setIsLoading] = useState(false);
   
   const [busType, setBusType] = useState('All');
@@ -61,25 +64,43 @@ export default function BusPage() {
        <section className="py-6 bg-secondary shadow-md">
         <div className="container mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end p-4 bg-card rounded-lg shadow">
-            <div className="flex flex-col space-y-1 lg:col-span-2">
+            <div className="flex flex-col space-y-1">
               <Label htmlFor="fromCity">From</Label>
               <Input id="fromCity" value={fromCity} onChange={e => setFromCity(e.target.value)} />
             </div>
-             <div className="flex justify-center items-center lg:col-span-1">
+            <div className="flex justify-center items-center">
                 <Button variant="outline" size="icon" onClick={handleSwapCities} aria-label="Swap cities" className="mt-auto mb-[1px] h-10 w-10 md:mt-6">
                   <ArrowRightLeft className="h-5 w-5" />
                 </Button>
             </div>
-            <div className="flex flex-col space-y-1 lg:col-span-2">
+            <div className="flex flex-col space-y-1">
               <Label htmlFor="toCity">To</Label>
               <Input id="toCity" value={toCity} onChange={e => setToCity(e.target.value)} />
             </div>
-            <div className="flex flex-col space-y-1 md:col-span-2 lg:col-span-2">
+             <div className="flex flex-col space-y-1">
                <Label htmlFor="travelDate">Date of Journey</Label>
                <Input id="travelDate" type="date" value={travelDate} onChange={e => setTravelDate(e.target.value)} />
             </div>
+             <div className="flex flex-col space-y-1">
+              <Label htmlFor="return">Return (Optional)</Label>
+              <Input id="return" type="date" value={returnDate} onChange={e => setReturnDate(e.target.value)} />
+            </div>
+            <div className="flex flex-col space-y-1 col-span-1 md:col-span-2 lg:col-span-2">
+              <Label htmlFor="passengersSeatType">Passengers & Seat Type</Label>
+              <Select value={passengersSeatType} onValueChange={setPassengersSeatType}>
+                <SelectTrigger id="passengersSeatType"><SelectValue placeholder="Select" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1-ALL">1 Passenger, All Types</SelectItem>
+                  <SelectItem value="1-Seater">1 Passenger, Seater</SelectItem>
+                  <SelectItem value="1-Sleeper">1 Passenger, Sleeper</SelectItem>
+                  <SelectItem value="2-ALL">2 Passengers, All Types</SelectItem>
+                  <SelectItem value="2-Seater">2 Passengers, Seater</SelectItem>
+                  <SelectItem value="2-Sleeper">2 Passengers, Sleeper</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <Button onClick={handleSearch} className="w-full lg:col-start-5 bg-primary hover:bg-primary/90 text-primary-foreground h-10 px-6 py-2 text-base" disabled={isLoading}>
-               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Search className="mr-2 h-4 w-5" />} Search
+               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Search className="mr-2 h-5 w-5" />} Search
             </Button>
           </div>
         </div>
