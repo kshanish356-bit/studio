@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Train, Search, Filter, Loader2, ArrowLeft } from 'lucide-react';
+import { Train, Search, Filter, Loader2, ArrowLeft, ArrowRightLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 
@@ -49,6 +49,13 @@ export default function TrainsPage() {
     const today = new Date().toISOString().split('T')[0];
     setDepartureDate(today);
   }, []);
+  
+  const handleSwapStations = () => {
+    const temp = fromStation;
+    setFromStation(toStation);
+    setToStation(temp);
+  };
+
 
   const handleSearchTrains = async () => {
     setIsLoading(true);
@@ -110,6 +117,11 @@ export default function TrainsPage() {
               <Label htmlFor="fromStation">From Station</Label>
               <Input id="fromStation" placeholder="e.g. Mumbai" value={fromStation} onChange={(e) => setFromStation(e.target.value)} />
             </div>
+            <div className="flex justify-center items-center">
+                <Button variant="outline" size="icon" onClick={handleSwapStations} aria-label="Swap stations" className="mt-auto mb-[1px] h-10 w-10 md:mt-6">
+                  <ArrowRightLeft className="h-5 w-5" />
+                </Button>
+            </div>
             <div className="flex flex-col space-y-1">
               <Label htmlFor="toStation">To Station</Label>
               <Input id="toStation" placeholder="e.g. Delhi" value={toStation} onChange={(e) => setToStation(e.target.value)} />
@@ -122,7 +134,7 @@ export default function TrainsPage() {
               <Label htmlFor="return">Return (Optional)</Label>
               <Input id="return" type="date" value={returnDate} onChange={(e) => setReturnDate(e.target.value)} />
             </div>
-            <div className="flex flex-col space-y-1 col-span-1 md:col-span-2 lg:col-span-1">
+            <div className="flex flex-col space-y-1 col-span-1 md:col-span-2 lg:col-span-2">
               <Label htmlFor="passengersClass">Passengers & Class</Label>
               <Select value={passengersClass} onValueChange={setPassengersClass}>
                 <SelectTrigger id="passengersClass"><SelectValue placeholder="Select" /></SelectTrigger>
@@ -250,3 +262,5 @@ export default function TrainsPage() {
     </div>
   );
 }
+
+    

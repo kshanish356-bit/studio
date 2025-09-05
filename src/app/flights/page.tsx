@@ -12,7 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle as CardTitleShad, CardDescription as CardDescriptionShad, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowUp, Search, Plane, Filter, Loader2, ArrowLeft, X, CheckCircle2, AlertCircle, BaggageClaim, Percent, MinusCircle, CalendarDays, ChevronRight, ChevronLeft } from 'lucide-react';
+import { ArrowUp, Search, Plane, Filter, Loader2, ArrowLeft, X, CheckCircle2, AlertCircle, BaggageClaim, Percent, MinusCircle, CalendarDays, ChevronRight, ChevronLeft, ArrowRightLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 
@@ -93,6 +93,12 @@ export default function FlightsPage() {
   }, []);
 
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+  
+  const handleSwapLocations = () => {
+    const temp = fromLocation;
+    setFromLocation(toLocation);
+    setToLocation(temp);
+  };
 
   const handleSearchFlights = async () => {
     setIsLoading(true);
@@ -338,6 +344,11 @@ export default function FlightsPage() {
               <Label htmlFor="from">From (IATA Code)</Label>
               <Input id="from" placeholder="e.g. DEL" value={fromLocation} onChange={(e) => setFromLocation(e.target.value)} />
             </div>
+            <div className="flex justify-center items-center">
+                <Button variant="outline" size="icon" onClick={handleSwapLocations} aria-label="Swap locations" className="mt-auto mb-[1px] h-10 w-10 md:mt-6">
+                  <ArrowRightLeft className="h-5 w-5" />
+                </Button>
+            </div>
             <div className="flex flex-col space-y-1">
               <Label htmlFor="to">To (IATA Code)</Label>
               <Input id="to" placeholder="e.g. BLR" value={toLocation} onChange={(e) => setToLocation(e.target.value)} />
@@ -350,7 +361,7 @@ export default function FlightsPage() {
               <Label htmlFor="return">Return (Optional)</Label>
               <Input id="return" type="date" value={returnDate} onChange={(e) => setReturnDate(e.target.value)} />
             </div>
-            <div className="flex flex-col space-y-1 col-span-1 md:col-span-2 lg:col-span-1">
+            <div className="flex flex-col space-y-1 col-span-1 md:col-span-2 lg:col-span-2">
               <Label htmlFor="passengersClass">Passengers & Class</Label>
               <Select value={passengersClass} onValueChange={setPassengersClass}>
                 <SelectTrigger id="passengersClass">
@@ -364,7 +375,7 @@ export default function FlightsPage() {
                 </SelectContent>
               </Select>
             </div>
-             <Button onClick={handleSearchFlights} className="w-full lg:w-auto lg:col-start-5 bg-primary hover:bg-primary/90 text-primary-foreground mt-4 lg:mt-0 h-10 px-6 py-2 text-base" disabled={isLoading}>
+             <Button onClick={handleSearchFlights} className="w-full lg:col-start-5 bg-primary hover:bg-primary/90 text-primary-foreground mt-4 lg:mt-0 h-10 px-6 py-2 text-base" disabled={isLoading}>
               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />} Search
             </Button>
           </div>
@@ -512,3 +523,5 @@ export default function FlightsPage() {
     </div>
   );
 }
+
+    
