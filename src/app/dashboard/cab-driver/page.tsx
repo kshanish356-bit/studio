@@ -50,6 +50,37 @@ interface Ride {
   dropoffCoords?: MapplsLatLng;
 }
 
+// Polyline decoding function
+function decodeMMIPolyline(encoded: string): MapplsLatLng[] {
+  let points: MapplsLatLng[] = [];
+  let index = 0, len = encoded.length;
+  let lat = 0, lng = 0;
+  while (index < len) {
+    let b, shift = 0, result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    let dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
+    lat += dlat;
+    shift = 0;
+    result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    let dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
+    lng += dlng;
+    points.push({ lat: lat / 1e5, lng: lng / 1e5 });
+  }
+  return points;
+}
+
+const interpolate = (start: number, end: number, step: number, total: number) =>
+  start + ((end - start) * (step / total));
+
 export default function CabDriverDashboardPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -73,14 +104,15 @@ export default function CabDriverDashboardPage() {
   const [aiImageHint, setAiImageHint] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
 
-
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<any>(null);
   const driverMarkerRef = useRef<any>(null);
   const pickupMarkerRef = useRef<any>(null);
   const dropoffMarkerRef = useRef<any>(null);
   const routePolylineRef = useRef<any>(null);
-  const locationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const animationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const routePathRef = useRef<MapplsLatLng[]>([]);
+
 
   useEffect(() => {
     if (!authLoading && (!user || user.primaryRole !== 'partner' || user.partnerRole !== 'cabDriver')) {
@@ -127,24 +159,24 @@ export default function CabDriverDashboardPage() {
   // Map Initialization
   useEffect(() => {
     const tryInitMap = () => {
-      if (window.mappls && window.mappls.Map) {
-          if (mapContainerRef.current && !mapInstanceRef.current) {
-            mapInstanceRef.current = new window.mappls.Map(mapContainerRef.current, {
-              center: driverLocation,
-              zoom: 12,
-            });
-            mapInstanceRef.current.addListener('load', () => {
-              if (mapInstanceRef.current && !driverMarkerRef.current) {
-                driverMarkerRef.current = new window.mappls.Marker({
-                  map: mapInstanceRef.current,
-                  position: driverLocation,
-                  icon_options: { html: '<div style="font-size:24px;">🚕</div>', width: 30, height: 30 }
-                });
-              }
+      if (!window.mappls?.Map) {
+        setTimeout(tryInitMap, 200); // Retry if script not loaded yet
+        return;
+      }
+      if (mapContainerRef.current && !mapInstanceRef.current) {
+        mapInstanceRef.current = new window.mappls.Map(mapContainerRef.current, {
+          center: driverLocation,
+          zoom: 12,
+        });
+        mapInstanceRef.current.addListener('load', () => {
+          if (mapInstanceRef.current && !driverMarkerRef.current) {
+            driverMarkerRef.current = new window.mappls.Marker({
+              map: mapInstanceRef.current,
+              position: driverLocation,
+              icon_options: { html: '<div style="font-size:24px;">🚕</div>', width: 30, height: 30 }
             });
           }
-      } else {
-          setTimeout(tryInitMap, 200); // Retry if script not loaded yet
+        });
       }
     };
     
@@ -155,27 +187,10 @@ export default function CabDriverDashboardPage() {
     return () => {
       if (mapInstanceRef.current?.destroy) mapInstanceRef.current.destroy();
       mapInstanceRef.current = null;
-      if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
+      if (animationIntervalRef.current) clearInterval(animationIntervalRef.current);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Simulate driver movement
-  useEffect(() => {
-    if (isOnline && currentRide?.status === 'Ongoing') {
-      if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
-      locationIntervalRef.current = setInterval(() => {
-        setDriverLocation(prevLoc => {
-          const newLat = prevLoc.lat + (Math.random() - 0.5) * 0.001;
-          const newLng = prevLoc.lng + (Math.random() - 0.5) * 0.001;
-          return { lat: newLat, lng: newLng };
-        });
-      }, 3000); // Update every 3 seconds
-    } else {
-      if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
-    }
-    return () => { if (locationIntervalRef.current) clearInterval(locationIntervalRef.current) };
-  }, [isOnline, currentRide]);
 
   // Update marker position on map
   useEffect(() => {
@@ -185,34 +200,121 @@ export default function CabDriverDashboardPage() {
   }, [driverLocation]);
 
 
+  const fetchAndDrawRoute = useCallback(async (start: MapplsLatLng, end: MapplsLatLng) => {
+    if (!mapInstanceRef.current || !window.mappls) return;
+    try {
+      const directionsURL = `https://atlas.mapmyindia.com/api/routemon/vector/driving/${start.lng},${start.lat};${end.lng},${end.lat}?key=${MAP_MY_INDIA_API_KEY}&alternatives=false&overview=full&geometries=polyline&steps=false`;
+      const response = await fetch(directionsURL);
+
+      if (!response.ok) throw new Error('Routing API error');
+      const data = await response.json();
+
+      if (data.routes && data.routes[0].geometry) {
+        const decodedPath = decodeMMIPolyline(data.routes[0].geometry);
+        routePathRef.current = decodedPath; // Store the path for animation
+
+        if (routePolylineRef.current) routePolylineRef.current.remove();
+        routePolylineRef.current = new window.mappls.Polyline({
+          map: mapInstanceRef.current,
+          path: decodedPath,
+          color: '#007BFF', opacity: 0.7, weight: 5
+        });
+
+        const bounds = new window.mappls.Bounds();
+        decodedPath.forEach((point: MapplsLatLng) => bounds.extend(point));
+        mapInstanceRef.current.fitBounds(bounds, { padding: 50 });
+
+      } else {
+        toast({ title: "Route not found", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Routing Error", description: (error as Error).message, variant: "destructive" });
+    }
+  }, [toast]);
+  
+  // Animate driver along the route
+  const startTripAnimation = useCallback(() => {
+    if (animationIntervalRef.current) clearInterval(animationIntervalRef.current);
+  
+    const route = routePathRef.current;
+    if (!route || route.length === 0) return;
+  
+    let step = 0;
+    const totalSteps = 200; // Increase for smoother but slower animation
+    const duration = 10000; // 10 seconds total animation
+    
+    animationIntervalRef.current = setInterval(() => {
+      if (step > totalSteps) {
+        if(animationIntervalRef.current) clearInterval(animationIntervalRef.current);
+        // Optionally auto-complete the ride
+        if (currentRide) {
+             handleRideUpdate(currentRide.id, 'Completed');
+        }
+        return;
+      }
+  
+      // This logic finds the correct segment of the polyline to interpolate on.
+      const progress = step / totalSteps;
+      const pathIndex = Math.min(Math.floor(progress * (route.length - 1)), route.length - 2);
+      
+      const segmentStart = route[pathIndex];
+      const segmentEnd = route[pathIndex + 1];
+
+      // Calculate how far along we are in the *current segment*
+      const segmentTotalSteps = 1 / (route.length - 1);
+      const segmentProgress = (progress - (pathIndex * segmentTotalSteps)) / segmentTotalSteps;
+
+      const lat = interpolate(segmentStart.lat, segmentEnd.lat, segmentProgress, 1);
+      const lng = interpolate(segmentStart.lng, segmentEnd.lng, segmentProgress, 1);
+      
+      setDriverLocation({ lat, lng });
+  
+      step++;
+    }, duration / totalSteps);
+  
+  }, [currentRide]);
+
+
   // Update ride markers and polyline
   useEffect(() => {
     if (mapInstanceRef.current && window.mappls) {
       if (pickupMarkerRef.current) pickupMarkerRef.current.remove();
       if (dropoffMarkerRef.current) dropoffMarkerRef.current.remove();
       if (routePolylineRef.current) routePolylineRef.current.remove();
+      if (animationIntervalRef.current) clearInterval(animationIntervalRef.current);
+      routePathRef.current = [];
 
       if (currentRide && currentRide.pickupCoords && currentRide.dropoffCoords) {
+        // Set initial driver position to pickup point when trip is accepted
+        if(currentRide.status === 'Accepted') {
+            setDriverLocation(currentRide.pickupCoords);
+        }
+
         pickupMarkerRef.current = new window.mappls.Marker({
-          map: mapInstanceRef.current,
-          position: currentRide.pickupCoords,
+          map: mapInstanceRef.current, position: currentRide.pickupCoords,
           icon_options: { html: '<div style="font-size:20px; color:green;">📍</div>', width:24, height:24 },
           title: "Pickup"
         });
         dropoffMarkerRef.current = new window.mappls.Marker({
-          map: mapInstanceRef.current,
-          position: currentRide.dropoffCoords,
+          map: mapInstanceRef.current, position: currentRide.dropoffCoords,
           icon_options: { html: '<div style="font-size:20px; color:red;">🏁</div>', width:24, height:24 },
           title: "Dropoff"
         });
         
-        mapInstanceRef.current.fitBounds([driverLocation, currentRide.pickupCoords, currentRide.dropoffCoords], {padding: 50});
-      } else if (mapInstanceRef.current) {
+        fetchAndDrawRoute(currentRide.pickupCoords, currentRide.dropoffCoords);
+
+        if (currentRide.status === 'Ongoing') {
+          startTripAnimation();
+        }
+
+      } else {
         mapInstanceRef.current.setCenter(driverLocation);
         mapInstanceRef.current.setZoom(12);
       }
     }
-  }, [currentRide, driverLocation]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentRide, fetchAndDrawRoute, startTripAnimation]);
+
 
   const handleStatusToggle = (checked: boolean) => {
     setIsOnline(checked);
