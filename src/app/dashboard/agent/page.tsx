@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,6 +17,7 @@ import { toast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import { generateImage } from '@/ai/flows/generate-image-flow';
 import { generatePackageDetails } from '@/ai/flows/generate-package-details-flow';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 
 // Mock Data
@@ -260,43 +260,65 @@ export default function TravelAgentDashboardPage() {
                       <CardTitle>Create New Tour Package</CardTitle>
                       <CardDescription>Add a new travel package to be displayed on the homepage.</CardDescription>
                   </CardHeader>
-                  <CardContent className="grid md:grid-cols-2 gap-6">
-                      <div className="md:col-span-2 space-y-2">
-                          <Label htmlFor="pkg-title">Package Title</Label>
-                           <div className="flex gap-2">
-                            <Input id="pkg-title" placeholder="e.g., Golden Triangle Tour" value={packageTitle} onChange={e => setPackageTitle(e.target.value)} />
-                             <Button type="button" variant="outline" onClick={handleAiAssist} disabled={isAiLoading}>
-                                {isAiLoading ? <Loader2 className="h-4 w-4 animate-spin"/> : <Sparkles className="h-4 w-4 text-primary" />}
-                                <span className="ml-2 hidden sm:inline">AI Assist</span>
-                             </Button>
-                          </div>
-                          <p className="text-xs text-muted-foreground">Enter a title and click "AI Assist" to generate a description and itinerary.</p>
-                      </div>
-                      <div className="md:col-span-2 space-y-2">
-                          <Label htmlFor="pkg-desc">Description</Label>
-                          <Textarea id="pkg-desc" placeholder="Describe the tour package..." value={packageDescription} onChange={e => setPackageDescription(e.target.value)} rows={4}/>
-                      </div>
-                      <div className="md:col-span-2 space-y-2">
-                          <Label htmlFor="pkg-itinerary">Itinerary</Label>
-                          <Textarea id="pkg-itinerary" placeholder="e.g., Day 1: Arrive in Delhi..." value={packageItinerary} onChange={e => setPackageItinerary(e.target.value)} rows={5}/>
-                      </div>
-                      <div className="space-y-2">
-                          <Label htmlFor="pkg-duration">Duration</Label>
-                          <Input id="pkg-duration" placeholder="e.g., 5 Days / 4 Nights" value={packageDuration} onChange={e => setPackageDuration(e.target.value)} />
-                      </div>
-                       <div className="space-y-2">
-                          <Label htmlFor="pkg-price">Price (INR)</Label>
-                          <Input id="pkg-price" type="number" placeholder="e.g., 25000" value={packagePrice} onChange={e => setPackagePrice(e.target.value)} />
-                      </div>
-                      <div className="md:col-span-2 space-y-2">
-                        <Label htmlFor="ai-hint">AI Image Hint (Optional)</Label>
-                        <Input id="ai-hint" placeholder="e.g., taj mahal sunset" value={aiImageHint} onChange={e => setAiImageHint(e.target.value)} />
-                        <p className="text-xs text-muted-foreground">A hint for the AI image generator. If blank, the title will be used.</p>
-                      </div>
-                      <div className="md:col-span-2 flex items-center space-x-2">
-                          <Checkbox id="isFeatured" checked={isFeatured} onCheckedChange={(checked) => setIsFeatured(!!checked)} />
-                          <Label htmlFor="isFeatured">Mark as Featured Package</Label>
-                      </div>
+                  <CardContent>
+                      <Accordion type="single" collapsible defaultValue="item-1" className="w-full">
+                          <AccordionItem value="item-1">
+                              <AccordionTrigger>Step 1: Basic Details & AI Assist</AccordionTrigger>
+                              <AccordionContent className="p-2">
+                                  <div className="space-y-2">
+                                      <Label htmlFor="pkg-title">Package Title</Label>
+                                      <div className="flex gap-2">
+                                          <Input id="pkg-title" placeholder="e.g., Golden Triangle Tour" value={packageTitle} onChange={e => setPackageTitle(e.target.value)} />
+                                          <Button type="button" variant="outline" onClick={handleAiAssist} disabled={isAiLoading}>
+                                              {isAiLoading ? <Loader2 className="h-4 w-4 animate-spin"/> : <Sparkles className="h-4 w-4 text-primary" />}
+                                              <span className="ml-2 hidden sm:inline">AI Assist</span>
+                                          </Button>
+                                      </div>
+                                      <p className="text-xs text-muted-foreground">Enter a title and click "AI Assist" to generate a description and itinerary.</p>
+                                  </div>
+                              </AccordionContent>
+                          </AccordionItem>
+                           <AccordionItem value="item-2">
+                              <AccordionTrigger>Step 2: Description & Itinerary</AccordionTrigger>
+                              <AccordionContent className="p-2 space-y-4">
+                                  <div className="space-y-2">
+                                      <Label htmlFor="pkg-desc">Description</Label>
+                                      <Textarea id="pkg-desc" placeholder="Describe the tour package..." value={packageDescription} onChange={e => setPackageDescription(e.target.value)} rows={4}/>
+                                  </div>
+                                  <div className="space-y-2">
+                                      <Label htmlFor="pkg-itinerary">Itinerary</Label>
+                                      <Textarea id="pkg-itinerary" placeholder="e.g., Day 1: Arrive in Delhi..." value={packageItinerary} onChange={e => setPackageItinerary(e.target.value)} rows={5}/>
+                                  </div>
+                              </AccordionContent>
+                          </AccordionItem>
+                          <AccordionItem value="item-3">
+                              <AccordionTrigger>Step 3: Pricing & Duration</AccordionTrigger>
+                              <AccordionContent className="p-2 grid md:grid-cols-2 gap-6">
+                                  <div className="space-y-2">
+                                      <Label htmlFor="pkg-duration">Duration</Label>
+                                      <Input id="pkg-duration" placeholder="e.g., 5 Days / 4 Nights" value={packageDuration} onChange={e => setPackageDuration(e.target.value)} />
+                                  </div>
+                                  <div className="space-y-2">
+                                      <Label htmlFor="pkg-price">Price (INR)</Label>
+                                      <Input id="pkg-price" type="number" placeholder="e.g., 25000" value={packagePrice} onChange={e => setPackagePrice(e.target.value)} />
+                                  </div>
+                              </AccordionContent>
+                          </AccordionItem>
+                           <AccordionItem value="item-4">
+                              <AccordionTrigger>Step 4: Final Touches</AccordionTrigger>
+                              <AccordionContent className="p-2 space-y-4">
+                                   <div className="space-y-2">
+                                      <Label htmlFor="ai-hint">AI Image Hint (Optional)</Label>
+                                      <Input id="ai-hint" placeholder="e.g., taj mahal sunset" value={aiImageHint} onChange={e => setAiImageHint(e.target.value)} />
+                                      <p className="text-xs text-muted-foreground">A hint for the AI image generator. If blank, the title will be used.</p>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox id="isFeatured" checked={isFeatured} onCheckedChange={(checked) => setIsFeatured(!!checked)} />
+                                        <Label htmlFor="isFeatured">Mark as Featured Package</Label>
+                                    </div>
+                              </AccordionContent>
+                          </AccordionItem>
+                      </Accordion>
                   </CardContent>
                   <CardFooter>
                       <Button type="submit" disabled={isSubmittingPackage}>

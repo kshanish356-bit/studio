@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -23,6 +22,7 @@ import { useRouter } from 'next/navigation';
 import { Checkbox } from '@/components/ui/checkbox';
 import { generateImage } from '@/ai/flows/generate-image-flow';
 import { generatePackageDetails } from '@/ai/flows/generate-package-details-flow';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 declare global {
   interface Window {
@@ -127,22 +127,24 @@ export default function CabDriverDashboardPage() {
      if (!MAP_MY_INDIA_API_KEY || MAP_MY_INDIA_API_KEY.includes('YOUR_')) return;
      
     const tryInitMap = () => {
-      if (window.mappls?.Map && mapContainerRef.current && !mapInstanceRef.current) {
-        mapInstanceRef.current = new window.mappls.Map(mapContainerRef.current, {
-          center: driverLocation,
-          zoom: 12,
-        });
-        mapInstanceRef.current.addListener('load', () => {
-          if (mapInstanceRef.current && !driverMarkerRef.current) {
-            driverMarkerRef.current = new window.mappls.Marker({
-              map: mapInstanceRef.current,
-              position: driverLocation,
-              icon_options: { html: '<div style="font-size:24px;">🚕</div>', width: 30, height: 30 }
+      if (window.mappls && window.mappls.Map) {
+          if (mapContainerRef.current && !mapInstanceRef.current) {
+            mapInstanceRef.current = new window.mappls.Map(mapContainerRef.current, {
+              center: driverLocation,
+              zoom: 12,
+            });
+            mapInstanceRef.current.addListener('load', () => {
+              if (mapInstanceRef.current && !driverMarkerRef.current) {
+                driverMarkerRef.current = new window.mappls.Marker({
+                  map: mapInstanceRef.current,
+                  position: driverLocation,
+                  icon_options: { html: '<div style="font-size:24px;">🚕</div>', width: 30, height: 30 }
+                });
+              }
             });
           }
-        });
-      } else if (!window.mappls?.Map) {
-        setTimeout(tryInitMap, 200); // Retry if script not loaded yet
+      } else {
+          setTimeout(tryInitMap, 200); // Retry if script not loaded yet
       }
     };
     
@@ -390,42 +392,62 @@ export default function CabDriverDashboardPage() {
                       <CardTitle>Create City Tour Package</CardTitle>
                       <CardDescription>Offer a fixed-rate tour package to customers.</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                       <div className="space-y-1">
-                          <Label htmlFor="pkg-title-cab">Package Title</Label>
-                           <div className="flex gap-2">
-                             <Input id="pkg-title-cab" placeholder="e.g., Delhi Sightseeing Tour" value={packageTitle} onChange={e => setPackageTitle(e.target.value)} />
-                             <Button type="button" variant="outline" onClick={handleAiAssist} disabled={isAiLoading}>
-                                {isAiLoading ? <Loader2 className="h-4 w-4 animate-spin"/> : <Sparkles className="h-4 w-4 text-primary" />}
-                             </Button>
-                           </div>
-                       </div>
-                       <div className="space-y-1">
-                          <Label htmlFor="pkg-desc-cab">Description</Label>
-                          <Textarea id="pkg-desc-cab" placeholder="Describe the tour package..." value={packageDescription} onChange={e => setPackageDescription(e.target.value)} />
-                       </div>
-                       <div className="space-y-1">
-                          <Label htmlFor="pkg-itinerary-cab">Itinerary</Label>
-                          <Textarea id="pkg-itinerary-cab" placeholder="AI will generate this, or you can write your own." value={packageItinerary} onChange={e => setPackageItinerary(e.target.value)} />
-                       </div>
-                       <div className="flex gap-4">
-                          <div className="space-y-1 w-1/2">
-                              <Label htmlFor="pkg-duration-cab">Duration</Label>
-                              <Input id="pkg-duration-cab" placeholder="e.g., 8 Hours" value={packageDuration} onChange={e => setPackageDuration(e.target.value)} />
-                          </div>
-                          <div className="space-y-1 w-1/2">
-                              <Label htmlFor="pkg-price-cab">Price (INR)</Label>
-                              <Input id="pkg-price-cab" type="number" placeholder="e.g., 2500" value={packagePrice} onChange={e => setPackagePrice(e.target.value)} />
-                          </div>
-                       </div>
-                       <div className="space-y-1">
-                          <Label htmlFor="ai-hint-cab">AI Image Hint (Optional)</Label>
-                          <Input id="ai-hint-cab" placeholder="e.g., india gate sunset" value={aiImageHint} onChange={e => setAiImageHint(e.target.value)} />
-                       </div>
-                       <div className="flex items-center space-x-2">
-                           <Checkbox id="isFeatured-cab" checked={isFeatured} onCheckedChange={(checked) => setIsFeatured(!!checked)} />
-                           <Label htmlFor="isFeatured-cab">Mark as Featured Package</Label>
-                       </div>
+                  <CardContent>
+                     <Accordion type="single" collapsible defaultValue="item-1" className="w-full">
+                        <AccordionItem value="item-1">
+                          <AccordionTrigger>Step 1: Basic Details & AI</AccordionTrigger>
+                          <AccordionContent className="p-2">
+                              <div className="space-y-1">
+                                <Label htmlFor="pkg-title-cab">Package Title</Label>
+                                <div className="flex gap-2">
+                                  <Input id="pkg-title-cab" placeholder="e.g., Delhi Sightseeing Tour" value={packageTitle} onChange={e => setPackageTitle(e.target.value)} />
+                                  <Button type="button" variant="outline" onClick={handleAiAssist} disabled={isAiLoading}>
+                                      {isAiLoading ? <Loader2 className="h-4 w-4 animate-spin"/> : <Sparkles className="h-4 w-4 text-primary" />}
+                                  </Button>
+                                </div>
+                              </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                        <AccordionItem value="item-2">
+                          <AccordionTrigger>Step 2: Content</AccordionTrigger>
+                          <AccordionContent className="p-2 space-y-4">
+                              <div className="space-y-1">
+                                <Label htmlFor="pkg-desc-cab">Description</Label>
+                                <Textarea id="pkg-desc-cab" placeholder="Describe the tour package..." value={packageDescription} onChange={e => setPackageDescription(e.target.value)} />
+                              </div>
+                              <div className="space-y-1">
+                                <Label htmlFor="pkg-itinerary-cab">Itinerary</Label>
+                                <Textarea id="pkg-itinerary-cab" placeholder="AI will generate this, or you can write your own." value={packageItinerary} onChange={e => setPackageItinerary(e.target.value)} />
+                              </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                        <AccordionItem value="item-3">
+                          <AccordionTrigger>Step 3: Pricing & Duration</AccordionTrigger>
+                          <AccordionContent className="p-2 grid grid-cols-2 gap-4">
+                              <div className="space-y-1">
+                                  <Label htmlFor="pkg-duration-cab">Duration</Label>
+                                  <Input id="pkg-duration-cab" placeholder="e.g., 8 Hours" value={packageDuration} onChange={e => setPackageDuration(e.target.value)} />
+                              </div>
+                              <div className="space-y-1">
+                                  <Label htmlFor="pkg-price-cab">Price (INR)</Label>
+                                  <Input id="pkg-price-cab" type="number" placeholder="e.g., 2500" value={packagePrice} onChange={e => setPackagePrice(e.target.value)} />
+                              </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                         <AccordionItem value="item-4">
+                          <AccordionTrigger>Step 4: Final Touches</AccordionTrigger>
+                          <AccordionContent className="p-2 space-y-4">
+                              <div className="space-y-1">
+                                <Label htmlFor="ai-hint-cab">AI Image Hint (Optional)</Label>
+                                <Input id="ai-hint-cab" placeholder="e.g., india gate sunset" value={aiImageHint} onChange={e => setAiImageHint(e.target.value)} />
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                  <Checkbox id="isFeatured-cab" checked={isFeatured} onCheckedChange={(checked) => setIsFeatured(!!checked)} />
+                                  <Label htmlFor="isFeatured-cab">Mark as Featured Package</Label>
+                              </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                     </Accordion>
                   </CardContent>
                   <CardFooter>
                       <Button type="submit" disabled={isSubmittingPackage}>
