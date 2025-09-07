@@ -3,7 +3,7 @@
 import * as React from "react"
 import * as SheetPrimitive from "@radix-ui/react-dialog"
 import { cva, type VariantProps } from "class-variance-authority"
-import { X } from "lucide-react"
+import { X, ChevronDown, ChevronUp } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -56,22 +56,43 @@ interface SheetContentProps
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, ...props }, ref) => (
+>(({ side = "right", className, children, ...props }, ref) => {
+  const contentRef = React.useRef<HTMLDivElement>(null);
+
+  const handleScroll = (direction: 'up' | 'down') => {
+      if (contentRef.current) {
+          const scrollAmount = direction === 'up' ? -150 : 150;
+          contentRef.current.scrollBy({ top: scrollAmount, behavior: 'smooth' });
+      }
+  };
+
+
+  return (
   <SheetPortal>
     <SheetOverlay />
     <SheetPrimitive.Content
       ref={ref}
-      className={cn(sheetVariants({ side }), className)}
+      className={cn(sheetVariants({ side }), "flex flex-col", className)}
       {...props}
     >
-      {children}
+       <div className="flex-shrink-0 p-2 text-center border-b">
+         <button onClick={() => handleScroll('up')} className="p-1 hover:bg-accent rounded-md"><ChevronUp className="h-5 w-5" /></button>
+       </div>
+       <div ref={contentRef} className="flex-grow overflow-y-auto p-6">
+        {children}
+      </div>
+       <div className="flex-shrink-0 p-2 text-center border-t">
+         <button onClick={() => handleScroll('down')} className="p-1 hover:bg-accent rounded-md"><ChevronDown className="h-5 w-5" /></button>
+       </div>
+
       <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
       </SheetPrimitive.Close>
     </SheetPrimitive.Content>
   </SheetPortal>
-))
+  )
+})
 SheetContent.displayName = SheetPrimitive.Content.displayName
 
 const SheetHeader = ({

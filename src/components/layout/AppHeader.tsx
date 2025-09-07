@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from 'next/link';
@@ -199,8 +198,8 @@ export default function AppHeader() {
                   <span className="sr-only">Open menu</span>
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-                 <SheetHeader>
+              <SheetContent side="right" className="w-[300px] sm:w-[400px] p-0">
+                 <SheetHeader className="p-6 pb-0">
                   <SheetTitle>Navigation Menu</SheetTitle>
                 </SheetHeader>
                 <nav className="flex flex-col space-y-4 mt-8">
@@ -208,7 +207,7 @@ export default function AppHeader() {
                     <Link
                       key={item.label}
                       href={item.href}
-                      className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
+                      className="flex items-center space-x-2 p-2 mx-6 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
                       <item.icon size={20} />
@@ -216,37 +215,39 @@ export default function AppHeader() {
                     </Link>
                   ))}
                   <hr className="my-4"/>
-                  {isAuthenticated && user ? (
-                    <>
-                       <Link href="/profile" className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
-                        <UserCircle size={20} /> <span>Profile</span>
-                      </Link>
-                       <Link href="/settings" className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
-                        <Settings size={20} /> <span>Settings</span>
-                      </Link>
-                      <Link href="/dashboard" className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
-                        <Briefcase size={20} /> <span>Dashboard</span>
-                      </Link>
-                      <Button onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }} variant="ghost" className="w-full justify-start p-2">
-                        <LogOut className="mr-2 h-5 w-5" /> Logout
+                  <div className="px-6">
+                    {isAuthenticated && user ? (
+                      <div className="flex flex-col space-y-2">
+                        <Link href="/profile" className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
+                          <UserCircle size={20} /> <span>Profile</span>
+                        </Link>
+                        <Link href="/settings" className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
+                          <Settings size={20} /> <span>Settings</span>
+                        </Link>
+                        <Link href="/dashboard" className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
+                          <Briefcase size={20} /> <span>Dashboard</span>
+                        </Link>
+                        <Button onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }} variant="ghost" className="w-full justify-start p-2">
+                          <LogOut className="mr-2 h-5 w-5" /> Logout
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col space-y-2">
+                      <Button onClick={() => openAuthModal('login', 'user')} className="w-full justify-start p-2">
+                        <UserCircle className="mr-2 h-5 w-5" /> User Login / Sign Up
                       </Button>
-                    </>
-                  ) : (
-                    <>
-                     <Button onClick={() => openAuthModal('login', 'user')} className="w-full justify-start p-2">
-                       <UserCircle className="mr-2 h-5 w-5" /> User Login / Sign Up
-                     </Button>
-                      <Button onClick={() => openAuthModal('login', 'partner')} className="w-full justify-start p-2">
-                       <Users className="mr-2 h-5 w-5" /> Partner Login / Sign Up
-                     </Button>
-                     <Button onClick={() => openAuthModal('login', 'admin')} className="w-full justify-start p-2">
-                       <ShieldIcon className="mr-2 h-5 w-5" /> Admin Login / Sign Up
-                     </Button>
-                    </>
-                  )}
-                  <Button variant="ghost" onClick={() => { toggleTheme(); setIsMobileMenuOpen(false); }} className="w-full justify-start p-2">
-                    <Moon className="mr-2 h-5 w-5" /> Toggle Theme
-                  </Button>
+                        <Button onClick={() => openAuthModal('login', 'partner')} className="w-full justify-start p-2">
+                        <Users className="mr-2 h-5 w-5" /> Partner Login / Sign Up
+                      </Button>
+                      <Button onClick={() => openAuthModal('login', 'admin')} className="w-full justify-start p-2">
+                        <ShieldIcon className="mr-2 h-5 w-5" /> Admin Login / Sign Up
+                      </Button>
+                      </div>
+                    )}
+                    <Button variant="ghost" onClick={() => { toggleTheme(); setIsMobileMenuOpen(false); }} className="w-full justify-start p-2 mt-4">
+                      <Moon className="mr-2 h-5 w-5" /> Toggle Theme
+                    </Button>
+                  </div>
                 </nav>
               </SheetContent>
             </Sheet>
