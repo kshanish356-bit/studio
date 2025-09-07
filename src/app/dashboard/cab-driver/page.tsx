@@ -121,6 +121,12 @@ export default function CabDriverDashboardPage() {
     }
   }, [user, authLoading, router, toast]);
 
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && (!MAP_MY_INDIA_API_KEY || MAP_MY_INDIA_API_KEY.includes('YOUR_'))) {
+        console.warn("Missing MapMyIndia API Key. Some features may not work.");
+    }
+  }, []);
+
   const fetchRides = useCallback(async () => {
     setIsLoadingRides(true);
     try {

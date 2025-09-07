@@ -144,6 +144,12 @@ export default function CabAndTourPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && (!MAP_MY_INDIA_API_KEY || MAP_MY_INDIA_API_KEY.includes('YOUR_'))) {
+        console.warn("Missing MapMyIndia API Key. Some features may not work.");
+    }
+  }, []);
+
+  useEffect(() => {
     const tryInitMap = () => {
       if (window.mappls && window.mappls.Map) {
         if (mapContainerRef.current && !mapInstanceRef.current) {
