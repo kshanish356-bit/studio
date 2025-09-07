@@ -91,6 +91,9 @@ export default function CabDriverDashboardPage() {
   
   const [availableRides, setAvailableRides] = useState<Ride[]>([]);
   const [currentRide, setCurrentRide] = useState<Ride | null>(null);
+  const [completedRides, setCompletedRides] = useState<Ride[]>([]);
+  const [totalEarnings, setTotalEarnings] = useState(0);
+
   const [isLoadingRides, setIsLoadingRides] = useState(false);
 
   // State for creating tour packages
@@ -126,7 +129,7 @@ export default function CabDriverDashboardPage() {
         console.warn("Missing MapMyIndia API Key. Some features may not work.");
     }
   }, []);
-
+  
   const fetchRides = useCallback(async () => {
     setIsLoadingRides(true);
     try {
@@ -143,15 +146,37 @@ export default function CabDriverDashboardPage() {
 
       const pendingRides = rides.filter(r => r.status === 'Pending');
       const acceptedRide = rides.find(r => ['Accepted', 'Ongoing'].includes(r.status));
+      const completed = rides.filter(r => r.status === 'Completed');
       
+      if (pendingRides.length > availableRides.length) {
+          toast({
+              title: "New Ride Request!",
+              description: `${pendingRides.length - availableRides.length} new ride(s) available.`,
+          })
+      }
+
       setAvailableRides(pendingRides);
       setCurrentRide(acceptedRide || null);
+      setCompletedRides(completed);
+
     } catch (error) {
       toast({ title: "Error Fetching Rides", description: (error as Error).message, variant: "destructive" });
     } finally {
       setIsLoadingRides(false);
     }
-  }, [toast]);
+  }, [toast, availableRides.length]);
+
+  useEffect(() => {
+    if (completedRides.length > 0) {
+        const earnings = completedRides.reduce((acc, ride) => {
+            const fare = ride.fare ? parseFloat(ride.fare.replace('₹', '')) : 0;
+            return acc + fare;
+        }, 0);
+        setTotalEarnings(earnings);
+    } else {
+        setTotalEarnings(0);
+    }
+  }, [completedRides]);
   
   useEffect(() => {
     if (isOnline) {
@@ -159,6 +184,7 @@ export default function CabDriverDashboardPage() {
     } else {
       setAvailableRides([]);
       setCurrentRide(null);
+      setCompletedRides([]);
     }
   }, [isOnline, fetchRides]);
 
@@ -448,17 +474,29 @@ export default function CabDriverDashboardPage() {
         
         {/* Left Panel - Ride Info */}
         <aside className="w-full md:w-[420px] bg-white p-4 flex flex-col gap-4 shadow-lg z-10 overflow-y-auto">
-           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Driver Status</CardTitle>
-              <Switch checked={isOnline} onCheckedChange={handleStatusToggle} />
-            </CardHeader>
-            <CardContent>
-              <p className={`text-lg font-semibold ${isOnline ? 'text-green-600' : 'text-red-600'}`}>
-                You are currently {isOnline ? 'Online' : 'Offline'}
-              </p>
-            </CardContent>
-          </Card>
+           <div className="grid grid-cols-2 gap-4">
+               <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle>Driver Status</CardTitle>
+                  <Switch checked={isOnline} onCheckedChange={handleStatusToggle} />
+                </CardHeader>
+                <CardContent>
+                  <p className={`text-lg font-semibold ${isOnline ? 'text-green-600' : 'text-red-600'}`}>
+                    {isOnline ? 'Online' : 'Offline'}
+                  </p>
+                </CardContent>
+              </Card>
+               <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">₹{totalEarnings.toLocaleString()}</div>
+                    <p className="text-xs text-muted-foreground">{completedRides.length} completed rides</p>
+                </CardContent>
+              </Card>
+           </div>
 
           {isOnline && currentRide && (
             <Card className="border-primary">
@@ -487,8 +525,12 @@ export default function CabDriverDashboardPage() {
           {isOnline && !currentRide && (
             <Card>
               <CardHeader>
-                <CardTitle>Ride Requests</CardTitle>
-                <CardDescription>Available rides nearby.</CardDescription>
+                <CardTitle className="flex items-center gap-2">
+                    <Bell className="h-5 w-5"/>
+                    Notifications
+                    {availableRides.length > 0 && <Badge className="animate-pulse">{availableRides.length}</Badge>}
+                </CardTitle>
+                <CardDescription>Available rides will appear here.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3 max-h-[50vh] overflow-y-auto">
                 {isLoadingRides && <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin"/></div>}
