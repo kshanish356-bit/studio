@@ -1,4 +1,3 @@
-
 "use client";
 
 import type React from 'react';
@@ -599,7 +598,7 @@ export default function CabAndTourPage() {
       />
       <nav className="p-4 container mx-auto">
         <Link href="/" className="text-primary hover:text-primary/80 font-bold text-lg inline-flex items-center">
-           Home
+          Home
         </Link>
       </nav>
 
@@ -734,7 +733,7 @@ export default function CabAndTourPage() {
                       </Button>
                     </div>
                     <Button onClick={handlePayAndBookTour} className="w-full mt-3 rounded-full bg-primary text-primary-foreground" disabled={isLoading && activeTab === 'cityTour'}>
-                       {(isLoading && activeTab === 'cityTour') ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "💳"} Pay via UPI & Book Tour
+                       {(isLoading && activeTab === 'cityTour') ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "💳"} Pay via UPI &amp; Book Tour
                     </Button>
                   </div>
                 )}
@@ -818,11 +817,11 @@ export default function CabAndTourPage() {
                         )}
                       </div>
                       <div>
-                        <Label htmlFor="bookingDateTime">Date & Time (Optional)</Label>
+                        <Label htmlFor="bookingDateTime">Date &amp; Time (Optional)</Label>
                         <Input id="bookingDateTime" type="datetime-local" value={bookingDateTime} onChange={e => setBookingDateTime(e.target.value)} />
                       </div>
                       <Button type="submit" className="w-full rounded-full bg-accent text-accent-foreground" disabled={(isLoading && activeTab === 'cab') || isCabRouteLoading}>
-                        {((isLoading && activeTab === 'cab') || isCabRouteLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Book Now & Proceed to Pay
+                        {((isLoading && activeTab === 'cab') || isCabRouteLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Book Now &amp; Proceed to Pay
                       </Button>
                     </form>
                   </div>
@@ -932,7 +931,7 @@ export default function CabAndTourPage() {
                       </div>
                       <Button type="submit" className="w-full rounded-full bg-primary text-primary-foreground" disabled={isLoading && activeTab === 'multiCity'}>
                          {(isLoading && activeTab === 'multiCity') ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Route className="mr-2 h-4 w-4" />}
-                         Search Multi-City & Proceed to Pay
+                         Search Multi-City &amp; Proceed to Pay
                       </Button>
                     </form>
                   </div>
