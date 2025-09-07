@@ -24,6 +24,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { generateImage } from '@/ai/flows/generate-image-flow';
 import { generatePackageDetails } from '@/ai/flows/generate-package-details-flow';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import Link from 'next/link';
 
 declare global {
   interface Window {
@@ -31,7 +32,7 @@ declare global {
   }
 }
 
-const MAP_MY_INDIA_API_KEY = process.env.NEXT_PUBLIC_MAP_MY_INDIA_API_KEY || 'b8558b6a01dd83cc4de527d1a5948af8';
+const MAP_MY_INDIA_API_KEY = process.env.NEXT_PUBLIC_MAP_MY_INDIA_API_KEY;
 
 interface MapplsLatLng {
   lat: number;
@@ -125,8 +126,6 @@ export default function CabDriverDashboardPage() {
 
   // Map Initialization
   useEffect(() => {
-     if (!MAP_MY_INDIA_API_KEY || MAP_MY_INDIA_API_KEY.includes('YOUR_')) return;
-     
     const tryInitMap = () => {
       if (window.mappls && window.mappls.Map) {
           if (mapContainerRef.current && !mapInstanceRef.current) {
@@ -149,7 +148,9 @@ export default function CabDriverDashboardPage() {
       }
     };
     
-    tryInitMap();
+    if (MAP_MY_INDIA_API_KEY && !MAP_MY_INDIA_API_KEY.includes('YOUR_')) {
+      tryInitMap();
+    }
 
     return () => {
       if (mapInstanceRef.current?.destroy) mapInstanceRef.current.destroy();
@@ -317,6 +318,20 @@ export default function CabDriverDashboardPage() {
   if (authLoading || !user) {
     return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
+  
+  if (!MAP_MY_INDIA_API_KEY || MAP_MY_INDIA_API_KEY.includes('YOUR_')) {
+    return (
+      <div className="container mx-auto p-4">
+        <Card className="p-8 text-center bg-destructive/10 border-destructive">
+          <h2 className="text-2xl font-bold text-destructive">Map API Key Not Configured</h2>
+          <p className="mt-2 text-destructive-foreground">
+            The interactive map functionality is disabled. Please set the <code>NEXT_PUBLIC_MAP_MY_INDIA_API_KEY</code> in your environment variables to continue.
+          </p>
+          <Button asChild className="mt-4"><Link href="/">Go Back Home</Link></Button>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -466,9 +481,7 @@ export default function CabDriverDashboardPage() {
 
         {/* Main Panel - Map */}
         <main className="flex-1 relative bg-gray-200">
-           <div ref={mapContainerRef} className="h-full w-full">
-              {(!MAP_MY_INDIA_API_KEY || MAP_MY_INDIA_API_KEY.includes('YOUR_')) && <div className="h-full flex items-center justify-center text-destructive-foreground bg-destructive p-4">MapMyIndia API Key is not configured.</div>}
-            </div>
+           <div ref={mapContainerRef} className="h-full w-full"></div>
             <div className="absolute top-4 right-4 flex flex-col gap-2">
                 <Button onClick={() => mapInstanceRef.current?.setZoom(mapInstanceRef.current.getZoom() + 1)} size="icon"><Plus/></Button>
                 <Button onClick={() => mapInstanceRef.current?.setZoom(mapInstanceRef.current.getZoom() - 1)} size="icon"><Minus/></Button>

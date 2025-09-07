@@ -45,7 +45,7 @@ interface MapplsAutosuggestResult {
   keywords: string[];
 }
 
-const MAP_MY_INDIA_API_KEY = process.env.NEXT_PUBLIC_MAP_MY_INDIA_API_KEY || 'b8558b6a01dd83cc4de527d1a5948af8';
+const MAP_MY_INDIA_API_KEY = process.env.NEXT_PUBLIC_MAP_MY_INDIA_API_KEY;
 
 // Polyline decoding function (standard algorithm)
 function decodeMMIPolyline(encoded: string): MapplsLatLng[] {
@@ -144,11 +144,6 @@ export default function CabAndTourPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    if (!MAP_MY_INDIA_API_KEY || MAP_MY_INDIA_API_KEY === 'YOUR_MAP_MY_INDIA_API_KEY_HERE') {
-      setMapStatus('error');
-      return;
-    }
-
     const tryInitMap = () => {
       if (window.mappls && window.mappls.Map) {
         if (mapContainerRef.current && !mapInstanceRef.current) {
@@ -167,7 +162,9 @@ export default function CabAndTourPage() {
       }
     };
 
-    tryInitMap();
+    if (MAP_MY_INDIA_API_KEY && !MAP_MY_INDIA_API_KEY.includes('YOUR_')) {
+      tryInitMap();
+    }
 
     return () => {
       if (mapInstanceRef.current && typeof mapInstanceRef.current.destroy === 'function') {
@@ -601,6 +598,20 @@ export default function CabAndTourPage() {
     "Agra Wonders": ['Taj Mahal, Agra', 'Agra Fort, Agra', 'Fatehpur Sikri, Agra'],
   };
 
+  if (!MAP_MY_INDIA_API_KEY || MAP_MY_INDIA_API_KEY.includes('YOUR_')) {
+    return (
+      <div className="container mx-auto p-4">
+        <Card className="p-8 text-center bg-destructive/10 border-destructive">
+          <h2 className="text-2xl font-bold text-destructive">Map API Key Not Configured</h2>
+          <p className="mt-2 text-destructive-foreground">
+            The interactive map functionality is disabled. Please set the <code>NEXT_PUBLIC_MAP_MY_INDIA_API_KEY</code> in your environment variables to continue.
+          </p>
+          <Button asChild className="mt-4"><Link href="/">Go Back Home</Link></Button>
+        </Card>
+      </div>
+    );
+  }
+
   const mapSdkUrl = `https://apis.mapmyindia.com/advancedmaps/v1/${MAP_MY_INDIA_API_KEY}/map_sdk.js`;
 
   return (
@@ -609,8 +620,6 @@ export default function CabAndTourPage() {
         src={mapSdkUrl}
         strategy="afterInteractive"
         onLoad={() => {
-          // console.log('MapmyIndia SDK script loaded.');
-          // Now that SDK is loaded, we can check for window.mappls safely in useEffect
           setMapStatus(typeof window.mappls === 'undefined' ? 'error' : 'loading');
         }}
         onError={() => {
@@ -966,7 +975,6 @@ export default function CabAndTourPage() {
             <Card className="p-1 md:p-2 shadow-lg h-[520px] md:h-auto">
               <CardContent className="p-0 h-full">
                 <div ref={mapContainerRef} className="w-full h-full rounded-md min-h-[500px] bg-muted flex items-center justify-center">
-                  {mapStatus === 'error' && <p className="text-destructive p-4 text-center">MapmyIndia API Key is not configured. Please set NEXT_PUBLIC_MAP_MY_INDIA_API_KEY in your environment.</p>}
                   {mapStatus === 'loading' && <p className="text-muted-foreground">Waiting for Map SDK to load...</p>}
                   {mapStatus === 'initializing' && <p className="text-muted-foreground">Initializing map...</p>}
                 </div>
@@ -978,3 +986,5 @@ export default function CabAndTourPage() {
     </>
   );
 }
+
+    
