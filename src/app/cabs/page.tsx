@@ -144,21 +144,30 @@ export default function CabAndTourPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    if (MAP_MY_INDIA_API_KEY && MAP_MY_INDIA_API_KEY !== 'YOUR_MAP_MY_INDIA_API_KEY_HERE') {
-      if (typeof window.mappls !== 'undefined' && mapContainerRef.current && !mapInstanceRef.current) {
-        setMapStatus('initializing');
-        mapInstanceRef.current = new window.mappls.Map(mapContainerRef.current, {
-          center: [20.5937, 78.9629],
-          zoom: 4,
-        });
-
-        mapInstanceRef.current.addListener('load', () => {
-          setMapStatus('ready');
-        });
-      }
-    } else {
+    if (!MAP_MY_INDIA_API_KEY || MAP_MY_INDIA_API_KEY === 'YOUR_MAP_MY_INDIA_API_KEY_HERE') {
       setMapStatus('error');
+      return;
     }
+
+    const tryInitMap = () => {
+      if (window.mappls && window.mappls.Map) {
+        if (mapContainerRef.current && !mapInstanceRef.current) {
+          setMapStatus('initializing');
+          mapInstanceRef.current = new window.mappls.Map(mapContainerRef.current, {
+            center: [20.5937, 78.9629],
+            zoom: 4,
+          });
+
+          mapInstanceRef.current.addListener('load', () => {
+            setMapStatus('ready');
+          });
+        }
+      } else {
+        setTimeout(tryInitMap, 200); // Retry after 200ms
+      }
+    };
+
+    tryInitMap();
 
     return () => {
       if (mapInstanceRef.current && typeof mapInstanceRef.current.destroy === 'function') {

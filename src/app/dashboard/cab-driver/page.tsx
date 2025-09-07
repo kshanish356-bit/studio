@@ -124,21 +124,30 @@ export default function CabDriverDashboardPage() {
 
   // Map Initialization
   useEffect(() => {
-    if (MAP_MY_INDIA_API_KEY && typeof window.mappls !== 'undefined' && mapContainerRef.current && !mapInstanceRef.current) {
-      mapInstanceRef.current = new window.mappls.Map(mapContainerRef.current, {
-        center: driverLocation,
-        zoom: 12,
-      });
-      mapInstanceRef.current.addListener('load', () => {
-        if (mapInstanceRef.current && !driverMarkerRef.current) {
-          driverMarkerRef.current = new window.mappls.Marker({
-            map: mapInstanceRef.current,
-            position: driverLocation,
-            icon_options: { html: '<div style="font-size:24px;">🚕</div>', width: 30, height: 30 }
-          });
+     if (!MAP_MY_INDIA_API_KEY || MAP_MY_INDIA_API_KEY.includes('YOUR_')) return;
+     
+    const tryInitMap = () => {
+        if (window.mappls?.Map && mapContainerRef.current && !mapInstanceRef.current) {
+            mapInstanceRef.current = new window.mappls.Map(mapContainerRef.current, {
+                center: driverLocation,
+                zoom: 12,
+            });
+            mapInstanceRef.current.addListener('load', () => {
+                if (mapInstanceRef.current && !driverMarkerRef.current) {
+                driverMarkerRef.current = new window.mappls.Marker({
+                    map: mapInstanceRef.current,
+                    position: driverLocation,
+                    icon_options: { html: '<div style="font-size:24px;">🚕</div>', width: 30, height: 30 }
+                });
+                }
+            });
+        } else {
+            setTimeout(tryInitMap, 200); // Retry if script not loaded yet
         }
-      });
     }
+    
+    tryInitMap();
+
     return () => {
       if (mapInstanceRef.current?.destroy) mapInstanceRef.current.destroy();
       mapInstanceRef.current = null;
@@ -443,5 +452,3 @@ export default function CabDriverDashboardPage() {
     </>
   );
 }
-
-    
