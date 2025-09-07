@@ -4,12 +4,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import Script from 'next/script';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  faCar, faStar, faCalendarDays, faWallet, faHistory, faCog, faConciergeBell, faMicrophone,
-  faSearch, faLocationArrow, faPlus, faMinus, faVolumeUp, faMapMarkerAlt, faFlagCheckered,
-  faMoneyBillWave, faInfoCircle, faComment, faPhone, faTimes, faBell, faCheck, faBan, faRoute
-} from '@fortawesome/free-solid-svg-icons';
+  Car, Star, CalendarDays, Wallet, History, Cog, Mic,
+  Search, LocateFixed, Plus, Minus, Volume2, MapPin, FlagCheckered,
+  DollarSign, Info, MessageSquare, Phone, X, Bell, Check, Ban, Route, Loader2, PlusCircle, Sparkles
+} from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,7 +19,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, PlusCircle, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Checkbox } from '@/components/ui/checkbox';
 import { generateImage } from '@/ai/flows/generate-image-flow';
@@ -196,6 +194,9 @@ export default function CabDriverDashboardPage() {
         });
         
         mapInstanceRef.current.fitBounds([driverLocation, currentRide.pickupCoords, currentRide.dropoffCoords], {padding: 50});
+      } else if (mapInstanceRef.current) {
+        mapInstanceRef.current.setCenter(driverLocation);
+        mapInstanceRef.current.setZoom(12);
       }
     }
   }, [currentRide, driverLocation]);
@@ -362,10 +363,10 @@ export default function CabDriverDashboardPage() {
                         <p><strong>Fare:</strong> <Badge variant="secondary">{ride.fare}</Badge></p>
                         <div className="flex gap-2">
                             <Button size="sm" className="flex-1 bg-green-500 hover:bg-green-600" onClick={() => handleRideUpdate(ride.id, 'Accepted')}>
-                                <FontAwesomeIcon icon={faCheck} className="mr-2 h-3 w-3" /> Accept
+                                <Check className="mr-2 h-3 w-3" /> Accept
                             </Button>
                             <Button size="sm" variant="outline" className="flex-1" onClick={() => handleRideUpdate(ride.id, 'Cancelled')}>
-                                <FontAwesomeIcon icon={faBan} className="mr-2 h-3 w-3" /> Decline
+                                <Ban className="mr-2 h-3 w-3" /> Decline
                             </Button>
                         </div>
                     </div>
@@ -433,12 +434,14 @@ export default function CabDriverDashboardPage() {
               {(!MAP_MY_INDIA_API_KEY || MAP_MY_INDIA_API_KEY.includes('YOUR_')) && <div className="h-full flex items-center justify-center text-destructive-foreground bg-destructive p-4">MapMyIndia API Key is not configured.</div>}
             </div>
             <div className="absolute top-4 right-4 flex flex-col gap-2">
-                <Button onClick={() => mapInstanceRef.current?.setZoom(mapInstanceRef.current.getZoom() + 1)} size="icon"><FontAwesomeIcon icon={faPlus}/></Button>
-                <Button onClick={() => mapInstanceRef.current?.setZoom(mapInstanceRef.current.getZoom() - 1)} size="icon"><FontAwesomeIcon icon={faMinus}/></Button>
-                <Button onClick={() => mapInstanceRef.current?.setCenter(driverLocation)} size="icon"><FontAwesomeIcon icon={faLocationArrow}/></Button>
+                <Button onClick={() => mapInstanceRef.current?.setZoom(mapInstanceRef.current.getZoom() + 1)} size="icon"><Plus/></Button>
+                <Button onClick={() => mapInstanceRef.current?.setZoom(mapInstanceRef.current.getZoom() - 1)} size="icon"><Minus/></Button>
+                <Button onClick={() => mapInstanceRef.current?.setCenter(driverLocation)} size="icon"><LocateFixed/></Button>
             </div>
         </main>
       </div>
     </>
   );
 }
+
+    
