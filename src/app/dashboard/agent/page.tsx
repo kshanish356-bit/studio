@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useAuth } from '@/contexts/AuthContext';
@@ -75,6 +76,10 @@ export default function TravelAgentDashboardPage() {
   const handleAiAssist = async () => {
     if (!packageTitle) {
       toast({ title: "Title Required", description: "Please enter a package title to get AI assistance.", variant: "destructive" });
+      return;
+    }
+    if (packageDescription || packageItinerary) {
+      toast({ title: "Already Generated", description: "You’ve already generated content. Edit manually or clear to regenerate." });
       return;
     }
     setIsAiLoading(true);
@@ -333,3 +338,5 @@ export default function TravelAgentDashboardPage() {
     </div>
   );
 }
+
+    

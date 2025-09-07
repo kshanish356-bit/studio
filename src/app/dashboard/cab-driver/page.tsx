@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -238,6 +239,10 @@ export default function CabDriverDashboardPage() {
       toast({ title: "Title Required", description: "Please enter a package title to get AI assistance.", variant: "destructive" });
       return;
     }
+    if (packageDescription || packageItinerary) {
+      toast({ title: "Already Generated", description: "You’ve already generated content. Edit manually or clear to regenerate." });
+      return;
+    }
     setIsAiLoading(true);
     try {
       const result = await generatePackageDetails({ title: packageTitle });
@@ -474,3 +479,5 @@ export default function CabDriverDashboardPage() {
     </>
   );
 }
+
+    
