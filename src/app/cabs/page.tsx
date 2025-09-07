@@ -1,3 +1,4 @@
+
 "use client";
 
 import type React from 'react';
@@ -10,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { UploadCloud, DownloadCloud, Trash2, Route, MapPin, Building, Navigation, Edit3, Loader2, Sparkles } from 'lucide-react';
+import { UploadCloud, DownloadCloud, Trash2, Route, MapPin, Building, Edit3, Loader2, Sparkles } from 'lucide-react';
 import { getCityTouristPlaces } from '@/ai/flows/city-tourist-places-flow';
 
 
@@ -131,6 +132,7 @@ export default function CabAndTourPage() {
 
 
   const [isLoading, setIsLoading] = useState(false); // General loading state for page-level actions
+  const [mapStatus, setMapStatus] = useState<'loading' | 'ready' | 'error' | 'initializing'>('loading');
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<any>(null); // For MapmyIndia map instance
@@ -142,23 +144,28 @@ export default function CabAndTourPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    if (MAP_MY_INDIA_API_KEY && MAP_MY_INDIA_API_KEY !== 'YOUR_MAP_MY_INDIA_API_KEY_HERE' && typeof window.mappls !== 'undefined' && mapContainerRef.current && !mapInstanceRef.current) {
-      mapInstanceRef.current = new window.mappls.Map(mapContainerRef.current, {
-        center: [20.5937, 78.9629], 
-        zoom: 4,
-      });
-      
-      mapInstanceRef.current.addListener('load', () => {
-        // console.log("MapmyIndia Map loaded successfully.");
-      });
+    if (MAP_MY_INDIA_API_KEY && MAP_MY_INDIA_API_KEY !== 'YOUR_MAP_MY_INDIA_API_KEY_HERE') {
+      if (typeof window.mappls !== 'undefined' && mapContainerRef.current && !mapInstanceRef.current) {
+        setMapStatus('initializing');
+        mapInstanceRef.current = new window.mappls.Map(mapContainerRef.current, {
+          center: [20.5937, 78.9629],
+          zoom: 4,
+        });
 
-      return () => {
-        if (mapInstanceRef.current && typeof mapInstanceRef.current.destroy === 'function') {
-            mapInstanceRef.current.destroy();
-            mapInstanceRef.current = null;
-        }
-      };
+        mapInstanceRef.current.addListener('load', () => {
+          setMapStatus('ready');
+        });
+      }
+    } else {
+      setMapStatus('error');
     }
+
+    return () => {
+      if (mapInstanceRef.current && typeof mapInstanceRef.current.destroy === 'function') {
+        mapInstanceRef.current.destroy();
+        mapInstanceRef.current = null;
+      }
+    };
   }, []);
 
   const addMapMarkerCityTour = useCallback(async (stopName: string, stopId: string) => {
@@ -188,7 +195,7 @@ export default function CabAndTourPage() {
         cityTourMarkersRef.current.push(marker);
         mapInstanceRef.current.setCenter(coordinates);
         mapInstanceRef.current.setZoom(12);
-        
+
         setTourStops(prevStops => prevStops.map(s => s.id === stopId ? {...s, coords: [coordinates.lat, coordinates.lng]} : s));
 
       } else {
@@ -202,9 +209,9 @@ export default function CabAndTourPage() {
 
   const geocodeAndSetMarkerCab = useCallback(async (address: string, type: 'pickup' | 'dropoff'): Promise<MapplsLatLng | null> => {
     if (!mapInstanceRef.current || !window.mappls || !address.trim()) return null;
-    
+
     let wasLoading = isCabRouteLoading;
-    if(type === 'pickup' && !pickupLocation) wasLoading = false; 
+    if(type === 'pickup' && !pickupLocation) wasLoading = false;
     if(type === 'dropoff' && !dropoffLocation) wasLoading = false;
 
     if(!wasLoading) setIsCabRouteLoading(true);
@@ -226,12 +233,12 @@ export default function CabAndTourPage() {
 
       if (bestResult && bestResult.latitude && bestResult.longitude) {
         const coordinates: MapplsLatLng = { lat: parseFloat(bestResult.latitude), lng: parseFloat(bestResult.longitude) };
-        
+
         const existingMarkerRef = type === 'pickup' ? pickupMarkerRefCab : dropoffMarkerRefCab;
         if (existingMarkerRef.current) {
           existingMarkerRef.current.remove();
         }
-        
+
         const newMarker = new window.mappls.Marker({
           map: mapInstanceRef.current,
           position: coordinates,
@@ -242,7 +249,7 @@ export default function CabAndTourPage() {
              iconWidth: 30,
           }
         });
-        
+
         if (type === 'pickup') {
           pickupMarkerRefCab.current = newMarker;
           setPickupCoordsCab(coordinates);
@@ -264,8 +271,8 @@ export default function CabAndTourPage() {
       if (type === 'pickup') setPickupCoordsCab(null); else setDropoffCoordsCab(null);
       return null;
     } finally {
-       if (!wasLoading) { 
-         if ((type === 'pickup' && dropoffLocation.trim() === '' ) || type === 'dropoff') { 
+       if (!wasLoading) {
+         if ((type === 'pickup' && dropoffLocation.trim() === '' ) || type === 'dropoff') {
             setIsCabRouteLoading(false);
          }
        }
@@ -285,7 +292,7 @@ export default function CabAndTourPage() {
         toast({ title: "Routing Error", description: `Failed to fetch route. Server: ${response.status}. ${errorText.substring(0,100)}`, variant: "destructive" });
         return;
       }
-      
+
       const data = await response.json();
 
       if (data.routes && data.routes.length > 0 && data.routes[0].geometry) {
@@ -299,11 +306,11 @@ export default function CabAndTourPage() {
         cabRoutePolylineRef.current = new window.mappls.Polyline({
           map: mapInstanceRef.current,
           path: decodedPath,
-          color: '#007BFF', 
+          color: '#007BFF',
           opacity: 0.8,
           weight: 5
         });
-        
+
         const bounds = new window.mappls.Bounds();
         decodedPath.forEach((point: MapplsLatLng) => bounds.extend(point));
         mapInstanceRef.current.fitBounds(bounds, { padding: 50 });
@@ -318,7 +325,7 @@ export default function CabAndTourPage() {
       setIsCabRouteLoading(false);
     }
   }, [toast]);
-  
+
   useEffect(() => {
     if (pickupCoordsCab && dropoffCoordsCab) {
       fetchAndDrawCabRoute(pickupCoordsCab, dropoffCoordsCab);
@@ -351,7 +358,7 @@ export default function CabAndTourPage() {
     }
 
     setIsLoadingState(true);
-    setShowSuggestionsState(true); 
+    setShowSuggestionsState(true);
 
     debounceTimerRef.current = setTimeout(async () => {
       try {
@@ -374,7 +381,7 @@ export default function CabAndTourPage() {
       } finally {
         setIsLoadingState(false);
       }
-    }, 300); 
+    }, 300);
   }, [toast]);
 
 
@@ -382,8 +389,8 @@ export default function CabAndTourPage() {
     suggestion: MapplsAutosuggestResult,
     setLocationState: React.Dispatch<React.SetStateAction<string>>,
     setShowSuggestionsState: React.Dispatch<React.SetStateAction<boolean>>,
-    setCoordsState?: React.Dispatch<React.SetStateAction<MapplsLatLng | null>>, 
-    geocodeType?: 'pickup' | 'dropoff' 
+    setCoordsState?: React.Dispatch<React.SetStateAction<MapplsLatLng | null>>,
+    geocodeType?: 'pickup' | 'dropoff'
   ) => {
     setLocationState(suggestion.placeName || suggestion.placeAddress);
     setShowSuggestionsState(false);
@@ -401,7 +408,7 @@ export default function CabAndTourPage() {
       setTourStops(prevStops => [...prevStops, { id: newStopId, name: stopName }]);
       addMapMarkerCityTour(stopName, newStopId);
       setTourStopInput('');
-      setShowTourStopSuggestions(false); 
+      setShowTourStopSuggestions(false);
     } else {
       toast({ title: "Invalid Stop", description: "Please enter a valid tour stop.", variant: "destructive" });
     }
@@ -415,7 +422,7 @@ export default function CabAndTourPage() {
     newTourStops.forEach(stop => addMapMarkerCityTour(stop.name, stop.id));
     toast({ title: "Preset Tour Loaded", description: `${stops.length} stops added to your tour.` });
   };
-  
+
   const handleClearList = () => {
     setTourStops([]);
     cityTourMarkersRef.current.forEach(marker => marker.remove());
@@ -485,13 +492,13 @@ export default function CabAndTourPage() {
         }
       };
       reader.readAsText(file);
-      event.target.value = ''; 
+      event.target.value = '';
     }
   };
-  
+
   const handleCabBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true); 
+    setIsLoading(true);
 
     if (!pickupLocation || !dropoffLocation) {
       toast({ title: "Missing Information", description: "Please fill pickup and dropoff locations.", variant: "destructive" });
@@ -514,17 +521,17 @@ export default function CabAndTourPage() {
       setIsLoading(false);
       return;
     }
-    
+
     toast({ title: "Cab Booking Submitted", description: `Booking from ${pickupLocation} to ${dropoffLocation}${bookingDateTime ? ` for ${bookingDateTime}` : ''}. Proceeding to payment.` });
     setTimeout(() => {
       setIsLoading(false);
-      router.push('/payment'); 
+      router.push('/payment');
     }, 1500);
   };
 
   const handleMultiCitySubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!city1 || !city2) { 
+    if (!city1 || !city2) {
       toast({
         title: 'Missing Information',
         description: 'Please enter at least City 1 and City 2 for multi-city booking.',
@@ -594,6 +601,11 @@ export default function CabAndTourPage() {
         strategy="afterInteractive"
         onLoad={() => {
           // console.log('MapmyIndia SDK script loaded.');
+          // Now that SDK is loaded, we can check for window.mappls safely in useEffect
+          setMapStatus(typeof window.mappls === 'undefined' ? 'error' : 'loading');
+        }}
+        onError={() => {
+          setMapStatus('error');
         }}
       />
       <nav className="p-4 container mx-auto">
@@ -642,7 +654,7 @@ export default function CabAndTourPage() {
                 {activeTab === 'cityTour' && (
                   <div id="cityTourSection">
                     <h3 className="text-xl font-semibold mb-3 flex items-center"><Edit3 className="mr-2 h-5 w-5 text-primary"/> City Tours</h3>
-                    
+
                     <div className="p-4 rounded-lg bg-secondary mb-4 border border-primary/20">
                       <h5 className="font-medium mb-2 flex items-center"><Sparkles className="mr-2 h-4 w-4 text-primary" /> AI-Powered Tour Planner</h5>
                       <div className="flex gap-2">
@@ -688,7 +700,7 @@ export default function CabAndTourPage() {
                         {showTourStopSuggestions && tourStopSuggestions.length > 0 && (
                           <ul className="absolute z-10 w-full bg-card border border-border rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
                             {tourStopSuggestions.map((suggestion, index) => (
-                              <li 
+                              <li
                                 key={suggestion.eLoc || `${suggestion.placeName}-${index}`}
                                 className="p-2 hover:bg-accent cursor-pointer"
                                 onMouseDown={() => handleSuggestionClick(suggestion, setTourStopInput, setShowTourStopSuggestions)}
@@ -705,7 +717,7 @@ export default function CabAndTourPage() {
                             <MapPin className="mr-2 h-4 w-4" /> Add Stop
                         </Button>
                     </div>
-                    
+
                     <h6 className="mt-4 font-medium">Your Custom Tour Stops:</h6>
                     {tourStops.length === 0 ? (
                       <p className="text-muted-foreground text-sm py-2">No stops added yet.</p>
@@ -719,7 +731,7 @@ export default function CabAndTourPage() {
                         ))}
                       </ul>
                     )}
-                    
+
                     <div className="flex justify-between gap-2 mt-4">
                       <Button variant="outline" onClick={handleUploadClick} className="flex-1 rounded-full min-w-0">
                         <UploadCloud className="mr-2 h-4 w-4" /> Upload
@@ -745,21 +757,21 @@ export default function CabAndTourPage() {
                       <div className="relative">
                         <Label htmlFor="pickupLoc">Pickup Location</Label>
                         <div className="flex items-center">
-                            <Input 
-                            id="pickupLoc" 
-                            value={pickupLocation} 
+                            <Input
+                            id="pickupLoc"
+                            value={pickupLocation}
                             onChange={e => {
-                                setPickupLocation(e.target.value); 
+                                setPickupLocation(e.target.value);
                                 setPickupCoordsCab(null);
                                 handleInputChangeAndFetchSuggestions(e.target.value, setPickupSuggestions, setIsPickupSuggestionsLoading, setShowPickupSuggestions, pickupDebounceTimerRef);
                             }}
                             onFocus={() => pickupLocation && pickupSuggestions.length > 0 && setShowPickupSuggestions(true)}
                             onBlur={() => {
-                                setTimeout(() => setShowPickupSuggestions(false), 200); 
+                                setTimeout(() => setShowPickupSuggestions(false), 200);
                                 if (pickupLocation.trim() && !pickupCoordsCab) geocodeAndSetMarkerCab(pickupLocation, 'pickup');
                             }}
-                            placeholder="Enter pickup location" 
-                            required 
+                            placeholder="Enter pickup location"
+                            required
                             className="flex-grow"
                             />
                             {isPickupSuggestionsLoading && <Loader2 className="h-5 w-5 animate-spin ml-2" />}
@@ -767,7 +779,7 @@ export default function CabAndTourPage() {
                         {showPickupSuggestions && pickupSuggestions.length > 0 && (
                           <ul className="absolute z-10 w-full bg-card border border-border rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
                             {pickupSuggestions.map((suggestion, index) => (
-                              <li 
+                              <li
                                 key={suggestion.eLoc || `${suggestion.placeName}-${index}`}
                                 className="p-2 hover:bg-accent cursor-pointer"
                                 onMouseDown={() => handleSuggestionClick(suggestion, setPickupLocation, setShowPickupSuggestions, setPickupCoordsCab, 'pickup')}
@@ -782,11 +794,11 @@ export default function CabAndTourPage() {
                       <div className="relative">
                         <Label htmlFor="dropoffLoc">Dropoff Location</Label>
                          <div className="flex items-center">
-                            <Input 
-                            id="dropoffLoc" 
-                            value={dropoffLocation} 
-                            onChange={e => { 
-                                setDropoffLocation(e.target.value); 
+                            <Input
+                            id="dropoffLoc"
+                            value={dropoffLocation}
+                            onChange={e => {
+                                setDropoffLocation(e.target.value);
                                 setDropoffCoordsCab(null);
                                 handleInputChangeAndFetchSuggestions(e.target.value, setDropoffSuggestions, setIsDropoffSuggestionsLoading, setShowDropoffSuggestions, dropoffDebounceTimerRef);
                             }}
@@ -795,8 +807,8 @@ export default function CabAndTourPage() {
                                 setTimeout(() => setShowDropoffSuggestions(false), 200);
                                 if (dropoffLocation.trim() && !dropoffCoordsCab) geocodeAndSetMarkerCab(dropoffLocation, 'dropoff');
                             }}
-                            placeholder="Enter dropoff location" 
-                            required 
+                            placeholder="Enter dropoff location"
+                            required
                             className="flex-grow"
                             />
                             {isDropoffSuggestionsLoading && <Loader2 className="h-5 w-5 animate-spin ml-2" />}
@@ -804,7 +816,7 @@ export default function CabAndTourPage() {
                         {showDropoffSuggestions && dropoffSuggestions.length > 0 && (
                           <ul className="absolute z-10 w-full bg-card border border-border rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
                             {dropoffSuggestions.map((suggestion, index) => (
-                              <li 
+                              <li
                                 key={suggestion.eLoc || `${suggestion.placeName}-${index}`}
                                 className="p-2 hover:bg-accent cursor-pointer"
                                 onMouseDown={() => handleSuggestionClick(suggestion, setDropoffLocation, setShowDropoffSuggestions, setDropoffCoordsCab, 'dropoff')}
@@ -834,17 +846,17 @@ export default function CabAndTourPage() {
                       <div className="relative">
                         <Label htmlFor="multiCity1">City 1</Label>
                         <div className="flex items-center">
-                           <Input 
-                            id="multiCity1" 
-                            value={city1} 
+                           <Input
+                            id="multiCity1"
+                            value={city1}
                             onChange={e => {
                                 setCity1(e.target.value);
                                 handleInputChangeAndFetchSuggestions(e.target.value, setCity1Suggestions, setIsCity1LoadingSuggestions, setShowCity1Suggestions, city1DebounceTimerRef, 'city');
                             }}
                             onFocus={() => city1 && city1Suggestions.length > 0 && setShowCity1Suggestions(true)}
                             onBlur={() => setTimeout(() => setShowCity1Suggestions(false), 200)}
-                            placeholder="Enter first city" 
-                            required 
+                            placeholder="Enter first city"
+                            required
                             className="flex-grow"
                            />
                            {isCity1LoadingSuggestions && <Loader2 className="h-5 w-5 animate-spin ml-2" />}
@@ -852,7 +864,7 @@ export default function CabAndTourPage() {
                         {showCity1Suggestions && city1Suggestions.length > 0 && (
                           <ul className="absolute z-10 w-full bg-card border border-border rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
                             {city1Suggestions.map((suggestion, index) => (
-                              <li 
+                              <li
                                 key={suggestion.eLoc || `${suggestion.placeName}-${index}`}
                                 className="p-2 hover:bg-accent cursor-pointer"
                                 onMouseDown={() => handleSuggestionClick(suggestion, setCity1, setShowCity1Suggestions)}
@@ -867,17 +879,17 @@ export default function CabAndTourPage() {
                       <div className="relative">
                         <Label htmlFor="multiCity2">City 2</Label>
                          <div className="flex items-center">
-                            <Input 
-                                id="multiCity2" 
-                                value={city2} 
+                            <Input
+                                id="multiCity2"
+                                value={city2}
                                 onChange={e => {
                                     setCity2(e.target.value);
                                     handleInputChangeAndFetchSuggestions(e.target.value, setCity2Suggestions, setIsCity2LoadingSuggestions, setShowCity2Suggestions, city2DebounceTimerRef, 'city');
                                 }}
                                 onFocus={() => city2 && city2Suggestions.length > 0 && setShowCity2Suggestions(true)}
                                 onBlur={() => setTimeout(() => setShowCity2Suggestions(false), 200)}
-                                placeholder="Enter second city" 
-                                required 
+                                placeholder="Enter second city"
+                                required
                                 className="flex-grow"
                             />
                             {isCity2LoadingSuggestions && <Loader2 className="h-5 w-5 animate-spin ml-2" />}
@@ -885,7 +897,7 @@ export default function CabAndTourPage() {
                         {showCity2Suggestions && city2Suggestions.length > 0 && (
                           <ul className="absolute z-10 w-full bg-card border border-border rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
                             {city2Suggestions.map((suggestion, index) => (
-                              <li 
+                              <li
                                 key={suggestion.eLoc || `${suggestion.placeName}-${index}`}
                                 className="p-2 hover:bg-accent cursor-pointer"
                                 onMouseDown={() => handleSuggestionClick(suggestion, setCity2, setShowCity2Suggestions)}
@@ -900,16 +912,16 @@ export default function CabAndTourPage() {
                       <div className="relative">
                         <Label htmlFor="multiCity3">City 3 (Optional)</Label>
                          <div className="flex items-center">
-                            <Input 
-                                id="multiCity3" 
-                                value={city3} 
+                            <Input
+                                id="multiCity3"
+                                value={city3}
                                 onChange={e => {
                                     setCity3(e.target.value);
                                     handleInputChangeAndFetchSuggestions(e.target.value, setCity3Suggestions, setIsCity3LoadingSuggestions, setShowCity3Suggestions, city3DebounceTimerRef, 'city');
                                 }}
                                 onFocus={() => city3 && city3Suggestions.length > 0 && setShowCity3Suggestions(true)}
                                 onBlur={() => setTimeout(() => setShowCity3Suggestions(false), 200)}
-                                placeholder="Enter third city" 
+                                placeholder="Enter third city"
                                 className="flex-grow"
                             />
                             {isCity3LoadingSuggestions && <Loader2 className="h-5 w-5 animate-spin ml-2" />}
@@ -917,7 +929,7 @@ export default function CabAndTourPage() {
                         {showCity3Suggestions && city3Suggestions.length > 0 && (
                           <ul className="absolute z-10 w-full bg-card border border-border rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
                             {city3Suggestions.map((suggestion, index) => (
-                              <li 
+                              <li
                                 key={suggestion.eLoc || `${suggestion.placeName}-${index}`}
                                 className="p-2 hover:bg-accent cursor-pointer"
                                 onMouseDown={() => handleSuggestionClick(suggestion, setCity3, setShowCity3Suggestions)}
@@ -945,8 +957,9 @@ export default function CabAndTourPage() {
             <Card className="p-1 md:p-2 shadow-lg h-[520px] md:h-auto">
               <CardContent className="p-0 h-full">
                 <div ref={mapContainerRef} className="w-full h-full rounded-md min-h-[500px] bg-muted flex items-center justify-center">
-                  {(!MAP_MY_INDIA_API_KEY || MAP_MY_INDIA_API_KEY === 'YOUR_MAP_MY_INDIA_API_KEY_HERE') && <p className="text-destructive p-4 text-center">MapmyIndia API Key is not configured. Please set NEXT_PUBLIC_MAP_MY_INDIA_API_KEY in your .env.local file.</p>}
-                  {(MAP_MY_INDIA_API_KEY && MAP_MY_INDIA_API_KEY !== 'YOUR_MAP_MY_INDIA_API_KEY_HERE' && typeof window !== 'undefined' && !window.mappls) && <p className="text-muted-foreground">Initializing map...</p>}
+                  {mapStatus === 'error' && <p className="text-destructive p-4 text-center">MapmyIndia API Key is not configured. Please set NEXT_PUBLIC_MAP_MY_INDIA_API_KEY in your environment.</p>}
+                  {mapStatus === 'loading' && <p className="text-muted-foreground">Waiting for Map SDK to load...</p>}
+                  {mapStatus === 'initializing' && <p className="text-muted-foreground">Initializing map...</p>}
                 </div>
               </CardContent>
             </Card>
