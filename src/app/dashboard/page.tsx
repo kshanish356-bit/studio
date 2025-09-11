@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,6 +31,10 @@ export default function DashboardPage() {
                     // This is the key change to ensure redirection
                     if (user.partnerRole === 'cabDriver') {
                         router.push('/dashboard/cab-driver');
+                    } else if (user.partnerRole === 'houseRent'){
+                        router.push('/dashboard/house-rent');
+                    } else if (user.partnerRole === 'agent'){
+                        router.push('/dashboard/agent');
                     } else {
                        router.push(`/dashboard/${user.partnerRole}`);
                     }
@@ -60,49 +63,43 @@ export default function DashboardPage() {
 
   // This content is specifically for regular 'user' roles.
   return (
-    <div className="container mx-auto px-4 py-12">
-      <h1 className="text-4xl font-bold mb-2">Welcome, {user.name || 'User'}!</h1>
-      <p className="text-lg text-muted-foreground mb-8">
-        Manage your bookings, profile, and preferences.
-      </p>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center"><BookMarked className="mr-2" /> My Bookings</CardTitle>
-            <CardDescription>View and manage your past and upcoming trips.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">Feature coming soon!</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center"><User className="mr-2" /> Profile Information</CardTitle>
-            <CardDescription>Update your personal details and contact information.</CardDescription>
-          </CardHeader>
-          <CardContent>
-             <Button asChild><Link href="/profile">Go to Profile</Link></Button>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center"><Cog className="mr-2" /> Preferences</CardTitle>
-            <CardDescription>Customize your travel preferences for better suggestions.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">Feature coming soon!</p>
-          </CardContent>
-        </Card>
-         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center"><Settings className="mr-2" /> Account Settings</CardTitle>
-            <CardDescription>Manage your account settings and notification preferences.</CardDescription>
-          </CardHeader>
-          <CardContent>
-             <Button asChild><Link href="/settings">Go to Settings</Link></Button>
-          </CardContent>
-        </Card>
-      </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center"><BookMarked className="mr-2" /> My Bookings</CardTitle>
+          <CardDescription>View and manage your past and upcoming trips.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">Feature coming soon!</p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center"><User className="mr-2" /> Profile Information</CardTitle>
+          <CardDescription>Update your personal details and contact information.</CardDescription>
+        </CardHeader>
+        <CardContent>
+           <Button asChild><Link href="/profile">Go to Profile</Link></Button>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center"><Cog className="mr-2" /> Preferences</CardTitle>
+          <CardDescription>Customize your travel preferences for better suggestions.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">Feature coming soon!</p>
+        </CardContent>
+      </Card>
+       <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center"><Settings className="mr-2" /> Account Settings</CardTitle>
+          <CardDescription>Manage your account settings and notification preferences.</CardDescription>
+        </CardHeader>
+        <CardContent>
+           <Button asChild><Link href="/settings">Go to Settings</Link></Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }
