@@ -4,15 +4,13 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import Link from 'next/link';
 import { Bar, BarChart, CartesianGrid, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend, Cell } from 'recharts';
 import Image from 'next/image';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Users, Activity, BarChart2, Settings, Shield, Loader2, DollarSign, ArrowUpRight, ArrowDownRight, Briefcase, Map, Wand2, UserPlus, Plane, Hotel as HotelIcon, Train } from 'lucide-react';
+import { Users, Activity, Loader2, DollarSign, Briefcase, Map, Wand2, UserPlus, Plane, Hotel as HotelIcon, Train } from 'lucide-react';
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { toast } from '@/hooks/use-toast';
 
@@ -86,7 +84,7 @@ export default function AdminDashboardPage() {
     }
   }, [user, isLoading, router]);
 
-  if (isLoading || !user) {
+  if (isLoading || !user || user.primaryRole !== 'admin') {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -95,8 +93,8 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-muted/40">
-        <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+    <div className="flex w-full flex-col">
+        <main className="flex flex-1 flex-col gap-4 md:gap-8">
             <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -261,45 +259,7 @@ export default function AdminDashboardPage() {
                         </Table>
                     </CardContent>
                 </Card>
-            </div>
-             <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">User Management</CardTitle>
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-xs text-muted-foreground">Manage users, roles, and permissions.</p>
-                    <Button asChild className="mt-4 w-full">
-                      <Link href="/admin/users">Manage Users</Link>
-                    </Button>
-                  </CardContent>
-                </Card>
-                 <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Partner Management</CardTitle>
-                    <Briefcase className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-xs text-muted-foreground">View and manage all partners.</p>
-                    <Button asChild variant="outline" className="mt-4 w-full">
-                      <Link href="/admin/partners">Manage Partners</Link>
-                    </Button>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">System Settings</CardTitle>
-                    <Settings className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-xs text-muted-foreground">Configure global application settings.</p>
-                     <Button asChild variant="outline" className="mt-4 w-full">
-                      <Link href="/admin/settings">Access Settings</Link>
-                    </Button>
-                  </CardContent>
-                </Card>
-                <Card className="xl:col-span-3">
+                 <Card className="xl:col-span-3">
                     <CardHeader>
                        <CardTitle className="flex items-center"><Map className="mr-2 h-5 w-5 text-primary" /> Geographic Booking Hotspots</CardTitle>
                        <CardDescription>Top booking locations visualized on a map.</CardDescription>
@@ -308,10 +268,8 @@ export default function AdminDashboardPage() {
                         <Image src="https://placehold.co/1200x600.png" width={1200} height={600} alt="Map of booking hotspots" className="rounded-md" data-ai-hint="world map" />
                     </CardContent>
                 </Card>
-             </div>
+            </div>
         </main>
     </div>
   );
 }
-
-    
