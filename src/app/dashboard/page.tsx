@@ -36,7 +36,7 @@ export default function DashboardPage() {
                     } else if (user.partnerRole === 'agent'){
                         router.push('/dashboard/agent');
                     } else {
-                       router.push(`/dashboard/${user.partnerRole}`);
+                       router.push(`/dashboard`); // Fallback for other partner roles
                     }
                 }
                 // If they are a partner but have no sub-role, the isPartnerRoleSelectionPending check should have already caught this.
