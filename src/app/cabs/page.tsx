@@ -874,7 +874,7 @@ export default function CabAndTourPage() {
                         <Input id="bookingDateTime" type="datetime-local" value={bookingDateTime} onChange={e => setBookingDateTime(e.target.value)} />
                       </div>
                       <Button type="submit" className="w-full rounded-full bg-accent text-accent-foreground" disabled={(isLoading && activeTab === 'cab') || isCabRouteLoading}>
-                        {((isLoading && activeTab === 'cab') || isCabRouteLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Book Now &amp; Proceed to Pay
+                        {((isLoading && activeTab === 'cab') || isCabRouteLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Book Now
                       </Button>
                     </form>
                   </div>
