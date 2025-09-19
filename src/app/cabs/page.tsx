@@ -13,6 +13,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { UploadCloud, DownloadCloud, Trash2, Route, MapPin, Building, Edit3, Loader2, Sparkles } from 'lucide-react';
 import { getCityTouristPlaces } from '@/ai/flows/city-tourist-places-flow';
+import { useAuth } from '@/contexts/AuthContext';
+import { AuthModal } from '@/components/auth/AuthModal';
 
 
 // Declare mappls for MapmyIndia
@@ -82,6 +84,8 @@ function decodeMMIPolyline(encoded: string): MapplsLatLng[] {
 export default function CabAndTourPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const { isAuthenticated } = useAuth();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('cityTour');
 
@@ -510,6 +514,10 @@ export default function CabAndTourPage() {
 
   const handleCabBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAuthenticated) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     setIsLoading(true);
 
     if (!pickupLocation || !dropoffLocation) {
@@ -543,6 +551,10 @@ export default function CabAndTourPage() {
 
   const handleMultiCitySubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAuthenticated) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     if (!city1 || !city2) {
       toast({
         title: 'Missing Information',
@@ -563,6 +575,10 @@ export default function CabAndTourPage() {
   };
 
   const handlePayAndBookTour = () => {
+    if (!isAuthenticated) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     if (tourStops.length === 0) {
       toast({ title: "Empty Tour", description: "Please add stops to your tour before booking.", variant: "destructive" });
       return;
@@ -632,6 +648,7 @@ export default function CabAndTourPage() {
           setMapStatus('error');
         }}
       />
+       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
       <nav className="p-4 container mx-auto">
         <Link href="/" className="text-primary hover:text-primary/80 font-bold text-lg inline-flex items-center">
           Home
@@ -992,7 +1009,3 @@ export default function CabAndTourPage() {
     </>
   );
 }
-
-    
-
-    
