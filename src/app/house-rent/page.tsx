@@ -6,11 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import Image from 'next/image';
-import { Search, MapPin, BedDouble, Bath, Users, Heart, Filter, Calendar as CalendarIcon, Users as UsersIcon } from 'lucide-react';
+import { Search, MapPin, BedDouble, Bath, Users, Heart, Filter, Calendar as CalendarIcon, Users as UsersIcon, Plus, Minus } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
+import { Separator } from '@/components/ui/separator';
+import { Label } from '@/components/ui/label';
 
 const mockProperties = [
   { id: 1, title: 'Luxury Beachfront Villa', location: 'Goa, India', price: 25000, beds: 4, baths: 5, guests: 8, image: 'https://placehold.co/600x400.png', aiHint: 'luxury villa' },
@@ -23,6 +25,22 @@ const mockProperties = [
 
 export default function HouseRentPage() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [guests, setGuests] = useState({ adults: 1, children: 0, infants: 0 });
+
+  const handleGuestChange = (type: 'adults' | 'children' | 'infants', operation: 'increment' | 'decrement') => {
+    setGuests(prev => {
+      const newCount = operation === 'increment' ? prev[type] + 1 : Math.max(0, prev[type] - 1);
+      // Ensure at least one adult
+      if (type === 'adults' && newCount < 1) return prev;
+      return { ...prev, [type]: newCount };
+    });
+  };
+  
+  const totalGuests = guests.adults + guests.children;
+  const guestSummary = totalGuests > 0
+    ? `${totalGuests} Guest${totalGuests > 1 ? 's' : ''}${guests.infants > 0 ? `, ${guests.infants} Infant${guests.infants > 1 ? 's' : ''}` : ''}`
+    : 'Add guests';
+
 
   return (
     <div className="bg-background">
@@ -54,11 +72,59 @@ export default function HouseRentPage() {
               <PopoverTrigger asChild>
                 <Button variant="outline" className="w-full md:w-auto flex-grow h-12 text-base justify-start text-left font-normal text-muted-foreground">
                   <UsersIcon className="mr-2 h-4 w-4" />
-                  Add guests
+                   {guestSummary}
                 </Button>
               </PopoverTrigger>
-               <PopoverContent className="w-64 p-4" align="start">
-                <p className="text-center">Guest selection UI here</p>
+               <PopoverContent className="w-80 p-4" align="start">
+                  <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                          <div>
+                              <Label htmlFor="adults" className="font-semibold">Adults</Label>
+                              <p className="text-xs text-muted-foreground">Age 13+</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleGuestChange('adults', 'decrement')} disabled={guests.adults <= 1}>
+                                <Minus className="h-4 w-4" />
+                              </Button>
+                              <span className="w-8 text-center">{guests.adults}</span>
+                              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleGuestChange('adults', 'increment')}>
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                          </div>
+                      </div>
+                      <Separator />
+                      <div className="flex justify-between items-center">
+                          <div>
+                              <Label htmlFor="children" className="font-semibold">Children</Label>
+                              <p className="text-xs text-muted-foreground">Ages 2–12</p>
+                          </div>
+                           <div className="flex items-center gap-2">
+                              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleGuestChange('children', 'decrement')} disabled={guests.children <= 0}>
+                                <Minus className="h-4 w-4" />
+                              </Button>
+                              <span className="w-8 text-center">{guests.children}</span>
+                              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleGuestChange('children', 'increment')}>
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                          </div>
+                      </div>
+                      <Separator />
+                       <div className="flex justify-between items-center">
+                          <div>
+                              <Label htmlFor="infants" className="font-semibold">Infants</Label>
+                              <p className="text-xs text-muted-foreground">Under 2</p>
+                          </div>
+                           <div className="flex items-center gap-2">
+                              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleGuestChange('infants', 'decrement')} disabled={guests.infants <= 0}>
+                                <Minus className="h-4 w-4" />
+                              </Button>
+                              <span className="w-8 text-center">{guests.infants}</span>
+                              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleGuestChange('infants', 'increment')}>
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                          </div>
+                      </div>
+                  </div>
               </PopoverContent>
             </Popover>
             <Button size="lg" className="w-full md:w-auto h-12 text-base px-8 bg-primary hover:bg-primary/90">
