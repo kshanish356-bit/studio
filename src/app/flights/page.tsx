@@ -340,11 +340,7 @@ export default function FlightsPage() {
           scrollbar-width: none;
         }
       `}</style>
-      <nav className="p-4 container mx-auto">
-        <Link href="/" className="text-primary hover:text-primary/80 font-bold text-lg">
-          &larr; Home
-        </Link>
-      </nav>
+      
 
       <section className="py-6 bg-secondary shadow-md">
         <div className="container mx-auto">

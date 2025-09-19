@@ -112,12 +112,7 @@ export default function TrainsPage() {
   return (
     <div className="bg-background min-h-screen">
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
-      <nav className="p-4 container mx-auto">
-        <Link href="/" className="text-primary hover:text-primary/80 font-bold text-lg inline-flex items-center">
-          <ArrowLeft className="mr-1 h-5 w-5"/>
-          Home
-        </Link>
-      </nav>
+      
 
       <section className="py-6 bg-secondary shadow-md">
         <div className="container mx-auto">

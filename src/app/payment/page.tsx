@@ -159,11 +159,7 @@ export default function PaymentPage() {
     <>
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
       <div className="min-h-screen bg-gray-100">
-        <nav className="p-4 container mx-auto">
-          <Link href="/" className="text-primary hover:text-primary/80 font-bold text-lg inline-flex items-center">
-            <ArrowLeft className="mr-2 h-5 w-5" /> Home
-          </Link>
-        </nav>
+        
 
         <header className="bg-background shadow-sm py-4 px-4 sm:px-6 lg:px-8">
           <h1 className="text-2xl font-bold text-foreground">Payment Options</h1>
