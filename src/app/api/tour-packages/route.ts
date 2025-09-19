@@ -122,7 +122,7 @@ export async function PATCH(request: NextRequest) {
         const body = await request.json();
         const { user, comment, stars } = body as Review;
 
-        if (!user || !comment || !stars) {
+        if (!user || !comment || stars === undefined) {
             return NextResponse.json({ message: 'User, comment, and stars are required for a review.' }, { status: 400 });
         }
 

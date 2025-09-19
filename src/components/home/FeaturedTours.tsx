@@ -1,18 +1,20 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
-import { Briefcase, Car, Loader2, ArrowRight, Star, Award, MessageSquare, PenSquare, CheckCircle } from 'lucide-react';
+import { Briefcase, Car, Loader2, ArrowRight, Star, Award, MessageSquare, PenSquare, CheckCircle, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
+import { ToastAction } from '@/components/ui/toast';
+
 
 interface Review {
   user: string;
@@ -51,10 +53,10 @@ export default function FeaturedTours() {
   const [reviewComment, setReviewComment] = useState('');
   const [reviewStars, setReviewStars] = useState(5);
 
-  const fetchPackages = async () => {
+  const fetchPackages = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/tour-packages');
+      const response = await fetch('/api/tour-packages', { cache: 'no-store' }); // Disable caching
       if (!response.ok) throw new Error('Failed to fetch tour packages');
       const data: TourPackage[] = await response.json();
       setPackages(data);
@@ -64,15 +66,28 @@ export default function FeaturedTours() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
   
   useEffect(() => {
     fetchPackages();
-  }, [toast]);
+    
+    // Add event listener to refetch when window gets focus
+    window.addEventListener('focus', fetchPackages);
+    
+    return () => {
+      window.removeEventListener('focus', fetchPackages);
+    };
+
+  }, [fetchPackages]);
 
   const filteredPackages = useMemo(() => {
     if (filter === 'all') {
-      return packages;
+      // Show featured packages first, then sort by creation (newest first, assuming IDs are sequential)
+      return [...packages].sort((a, b) => {
+        if (a.isFeatured && !b.isFeatured) return -1;
+        if (!a.isFeatured && b.isFeatured) return 1;
+        return (parseInt(b.id.replace('pkg','')) || 0) - (parseInt(a.id.replace('pkg','')) || 0);
+      });
     }
     return packages.filter(p => p.creatorRole === filter);
   }, [packages, filter]);
@@ -95,6 +110,8 @@ export default function FeaturedTours() {
   
   const handleLeaveReview = (pkg: TourPackage) => {
     setSelectedPackage(pkg);
+    setReviewComment('');
+    setReviewStars(5);
     setIsReviewModalOpen(true);
   };
 
@@ -123,11 +140,11 @@ export default function FeaturedTours() {
     }
   };
   
-  const StarRating = ({ rating }: { rating: number }) => (
+  const StarRating = ({ pkg }: { pkg: TourPackage }) => (
     <div className="flex items-center gap-1 text-yellow-500">
       <Star className="h-4 w-4 fill-current"/>
-      <span className="font-bold text-sm">{rating > 0 ? rating.toFixed(1) : 'New'}</span>
-      <span className="text-xs text-muted-foreground">({packages.find(p => p.rating === rating)?.reviews.length || 0} reviews)</span>
+      <span className="font-bold text-sm">{pkg.rating > 0 ? pkg.rating.toFixed(1) : 'New'}</span>
+      <span className="text-xs text-muted-foreground">({pkg.reviews.length || 0} reviews)</span>
     </div>
   );
 
@@ -148,6 +165,9 @@ export default function FeaturedTours() {
               </Button>
               <Button variant={filter === 'cabDriver' ? 'default' : 'outline'} onClick={() => setFilter('cabDriver')}>
                   <Car className="mr-2 h-4 w-4"/> Driver City Tours
+              </Button>
+              <Button variant="outline" size="icon" onClick={fetchPackages} aria-label="Refresh Tours" disabled={isLoading}>
+                 <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
               </Button>
           </div>
 
@@ -191,7 +211,7 @@ export default function FeaturedTours() {
                   <CardContent className="p-6 flex-grow">
                     <div className="flex justify-between items-start mb-2">
                       <CardTitle className="text-xl group-hover:text-primary transition-colors">{pkg.title}</CardTitle>
-                      <StarRating rating={pkg.rating} />
+                      <StarRating pkg={pkg} />
                     </div>
 
                     <CardDescription className="text-sm text-muted-foreground mt-1 mb-3">
