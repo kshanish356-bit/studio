@@ -1,10 +1,11 @@
+
 "use client";
 
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect, useRef } from 'react';
 import {
-  Home, Plane, Train, Hotel, Bus, CarTaxiFront, Briefcase, Shield, Moon, User, ChevronDown, UserCircle, Settings, LogOut, Menu, Building, Users, Shield as ShieldIcon
+  Home, Plane, Train, Hotel, Bus, CarTaxiFront, Briefcase, Shield, Moon, User, ChevronDown, UserCircle, Settings, LogOut, Menu, Building, Users, Shield as ShieldIcon, ListPlus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AuthModal } from '@/components/auth/AuthModal';
@@ -30,6 +31,7 @@ const navLinks = [
   { href: '/bus', label: 'Bus', icon: Bus },
   { href: '/cabs', label: 'Cabs', icon: CarTaxiFront },
   { href: '/holiday-packages', label: 'Holiday Packages', icon: Briefcase },
+  { href: '/itinerary-planner', label: 'Itinerary Planner', icon: ListPlus },
   { href: '/insurance', label: 'Insurance', icon: Shield },
 ];
 
