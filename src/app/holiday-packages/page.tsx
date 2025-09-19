@@ -11,6 +11,10 @@ import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { generateImage } from '@/ai/flows/generate-image-flow';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/contexts/AuthContext';
+import { AuthModal } from '@/components/auth/AuthModal';
+import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
 interface Package {
   id: number;
@@ -69,6 +73,12 @@ export default function HolidayPackagesPage() {
   const [packages, setPackages] = useState(initialPackages);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImageState>({});
 
+  const { isAuthenticated } = useAuth();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const { toast } = useToast();
+  const router = useRouter();
+
+
   const handleGenerateImages = async () => {
     setGeneratedImages(prev => {
         const newState: GeneratedImageState = {};
@@ -103,8 +113,18 @@ export default function HolidayPackagesPage() {
     });
   };
 
+  const handleBookNow = (pkg: Package) => {
+    if (!isAuthenticated) {
+        setIsAuthModalOpen(true);
+        return;
+    }
+    toast({ title: "Booking Initiated", description: `Proceeding to payment for ${pkg.title}.` });
+    router.push('/payment');
+  }
+
   return (
     <div className="bg-secondary/30 min-h-screen">
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
       <section 
         className="py-20 md:py-32 text-white relative bg-cover bg-center"
         style={{ backgroundImage: "url('https://placehold.co/1920x1080.png')"}}
@@ -184,8 +204,8 @@ export default function HolidayPackagesPage() {
                     <p className="text-sm text-muted-foreground">Starting from</p>
                     <p className="text-2xl font-bold text-primary">₹{pkg.price.toLocaleString()}</p>
                  </div>
-                <Button asChild>
-                  <Link href="#">Details <ArrowRight className="ml-2 h-4 w-4"/></Link>
+                <Button onClick={() => handleBookNow(pkg)}>
+                  Book Now <ArrowRight className="ml-2 h-4 w-4"/>
                 </Button>
               </CardFooter>
             </Card>
@@ -195,3 +215,5 @@ export default function HolidayPackagesPage() {
     </div>
   );
 }
+
+    

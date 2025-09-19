@@ -15,6 +15,8 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowUp, Search, Plane, Filter, Loader2, ArrowLeft, X, CheckCircle2, AlertCircle, BaggageClaim, Percent, MinusCircle, CalendarDays, ChevronRight, ChevronLeft, ArrowRightLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { useAuth } from '@/contexts/AuthContext';
+import { AuthModal } from '@/components/auth/AuthModal';
 
 interface FareBenefit {
   text: string;
@@ -60,6 +62,8 @@ interface FlightWithFares {
 export default function FlightsPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const { isAuthenticated } = useAuth();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const [fromLocation, setFromLocation] = useState('DEL');
   const [toLocation, setToLocation] = useState('BLR');
@@ -186,6 +190,10 @@ export default function FlightsPage() {
   };
 
   const handleBookNowFromFareOption = (flight: FlightWithFares, fare: FareOption) => {
+    if (!isAuthenticated) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     setSelectedFlightForFare(flight);
     setSelectedFareOption(fare);
     setIsFareOptionsModalOpen(false);
@@ -322,6 +330,7 @@ export default function FlightsPage() {
 
   return (
     <div className="bg-background min-h-screen">
+       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
       <style jsx global>{`
         .no-scrollbar::-webkit-scrollbar {
           display: none;

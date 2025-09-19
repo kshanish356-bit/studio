@@ -13,6 +13,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Train, Search, Filter, Loader2, ArrowLeft, ArrowRightLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { AuthModal } from '@/components/auth/AuthModal';
 
 interface TrainResult {
   id: string;
@@ -26,6 +28,8 @@ interface TrainResult {
 export default function TrainsPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { isAuthenticated } = useAuth();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   // Search form state
   const [fromStation, setFromStation] = useState('');
@@ -77,6 +81,10 @@ export default function TrainsPage() {
   };
 
   const handleBookTrain = (train: TrainResult) => {
+    if (!isAuthenticated) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     toast({ title: 'Train Selected', description: `Booking ${train.trainName}. Proceeding to payment.` });
     router.push('/payment');
   };
@@ -103,6 +111,7 @@ export default function TrainsPage() {
 
   return (
     <div className="bg-background min-h-screen">
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
       <nav className="p-4 container mx-auto">
         <Link href="/" className="text-primary hover:text-primary/80 font-bold text-lg inline-flex items-center">
           <ArrowLeft className="mr-1 h-5 w-5"/>
