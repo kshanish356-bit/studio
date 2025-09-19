@@ -649,12 +649,7 @@ export default function CabAndTourPage() {
         }}
       />
        <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
-      <nav className="p-4 container mx-auto">
-        <Link href="/" className="text-primary hover:text-primary/80 font-bold text-lg inline-flex items-center">
-          Home
-        </Link>
-      </nav>
-
+      
       {(isLoading || isCabRouteLoading || isPickupSuggestionsLoading || isDropoffSuggestionsLoading || isCity1LoadingSuggestions || isCity2LoadingSuggestions || isCity3LoadingSuggestions || isTourStopSuggestionsLoading || isAiTourLoading) && (
         <div className="fixed inset-0 bg-black/50 flex flex-col items-center justify-center z-[1000]">
           <Loader2 className="h-16 w-16 text-primary animate-spin" />
