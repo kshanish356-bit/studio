@@ -984,7 +984,7 @@ export default function CabAndTourPage() {
                       </div>
                       <Button type="submit" className="w-full rounded-full bg-primary text-primary-foreground" disabled={isLoading && activeTab === 'multiCity'}>
                          {(isLoading && activeTab === 'multiCity') ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Route className="mr-2 h-4 w-4" />}
-                         Search Multi-City &amp; Proceed to Pay
+                         Book Now
                       </Button>
                     </form>
                   </div>
