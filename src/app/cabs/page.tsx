@@ -769,7 +769,7 @@ export default function CabAndTourPage() {
                       </Button>
                     </div>
                     <Button onClick={handlePayAndBookTour} className="w-full mt-3 rounded-full bg-primary text-primary-foreground" disabled={isLoading && activeTab === 'cityTour'}>
-                       {(isLoading && activeTab === 'cityTour') ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "💳"} Pay via UPI &amp; Book Tour
+                       {(isLoading && activeTab === 'cityTour') ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Book Tour"}
                     </Button>
                   </div>
                 )}
@@ -992,5 +992,7 @@ export default function CabAndTourPage() {
     </>
   );
 }
+
+    
 
     
