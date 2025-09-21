@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useState, useEffect } from 'react';
-import { UserCircle, Mail, Edit3, LogOutIcon, Users, Settings2, TrainFront, Trash2, UserPlus, Save } from 'lucide-react';
+import { UserCircle, Mail, Edit3, LogOutIcon, Users, Settings2, TrainFront, Trash2, UserPlus, Save, Fingerprint, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -39,6 +39,9 @@ export default function ProfilePage() {
   const [seatPreference, setSeatPreference] = useState('any');
   const [specialAssistance, setSpecialAssistance] = useState(false);
   const [irctcUsername, setIrctcUsername] = useState('');
+  const [voterId, setVoterId] = useState('');
+  const [voterIdFile, setVoterIdFile] = useState<File | null>(null);
+
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -104,6 +107,19 @@ export default function ProfilePage() {
     }
     toast({ title: "IRCTC Username Saved", description: `Username ${irctcUsername} linked (mock action).` });
   }
+  
+  const handleKycSubmit = () => {
+    if (!voterId.trim()) {
+      toast({ title: "Voter ID Required", description: "Please enter your Voter ID number.", variant: "destructive" });
+      return;
+    }
+     if (!voterIdFile) {
+      toast({ title: "File Required", description: "Please upload an image of your Voter ID card.", variant: "destructive" });
+      return;
+    }
+    // Placeholder for actual KYC submission logic
+    toast({ title: "KYC Submitted", description: "Your Voter ID is being verified (mock action)." });
+  };
 
 
   if (isLoading) {
@@ -190,6 +206,41 @@ export default function ProfilePage() {
           </Button>
         </CardFooter>
       </Card>
+
+      {/* KYC Verification Card */}
+      <Card className="max-w-2xl mx-auto shadow-lg">
+        <CardHeader>
+            <CardTitle className="flex items-center text-2xl"><Fingerprint className="mr-3 text-primary" /> KYC Verification</CardTitle>
+            <CardDescription>Submit your Voter ID for Know Your Customer (KYC) verification.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+            <div>
+                <Label htmlFor="voterId">Voter ID Number</Label>
+                <Input
+                    id="voterId"
+                    value={voterId}
+                    onChange={(e) => setVoterId(e.target.value)}
+                    placeholder="Enter your Voter ID number"
+                />
+            </div>
+            <div>
+                <Label htmlFor="voterIdFile">Upload Voter ID Card</Label>
+                <Input
+                    id="voterIdFile"
+                    type="file"
+                    accept="image/png, image/jpeg, application/pdf"
+                    onChange={(e) => setVoterIdFile(e.target.files?.[0] || null)}
+                />
+                 <p className="text-xs text-muted-foreground mt-1">Upload a clear image or PDF of your Voter ID card.</p>
+            </div>
+        </CardContent>
+        <CardFooter>
+            <Button onClick={handleKycSubmit} className="w-full">
+                <Upload className="mr-2 h-4 w-4" /> Submit for Verification
+            </Button>
+        </CardFooter>
+      </Card>
+
 
       {/* Saved Travellers Card */}
       <Card className="max-w-2xl mx-auto shadow-lg">
@@ -305,3 +356,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    
