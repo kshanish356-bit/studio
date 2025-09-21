@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Eye, EyeOff, Loader2, Shield } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Shield, Phone } from 'lucide-react';
 import { useAuth, type PartnerRole } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
@@ -38,6 +38,7 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
   const [loginPassword, setLoginPassword] = useState('');
   const [signupName, setSignupName] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
+  const [signupPhone, setSignupPhone] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
   const [isPartnerSignup, setIsPartnerSignup] = useState(false);
@@ -64,6 +65,7 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
       setLoginPassword('');
       setSignupName('');
       setSignupEmail('');
+      setSignupPhone('');
       setSignupPassword('');
       setSignupConfirmPassword('');
       setResetEmail('');
@@ -116,6 +118,10 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
       if (!partnerRoleToSet) {
           toast({ title: "Error", description: "Please select a partner type.", variant: "destructive" });
           return;
+      }
+      if (!signupPhone.trim()) {
+        toast({ title: "Error", description: "Phone number is required for partners.", variant: "destructive" });
+        return;
       }
     }
 
@@ -237,6 +243,26 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
         <Label htmlFor="signupEmail">Email</Label>
         <Input id="signupEmail" type="email" placeholder="Email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} required />
       </div>
+       {isPartnerSignup && (
+        <div>
+          <Label htmlFor="signupPhone">Phone Number</Label>
+          <div className="relative">
+            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <span className="absolute left-9 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">+91 |</span>
+            <Input
+              id="signupPhone"
+              type="tel"
+              placeholder="Your 10-digit mobile number"
+              value={signupPhone}
+              onChange={(e) => setSignupPhone(e.target.value)}
+              required={isPartnerSignup}
+              className="pl-24"
+              maxLength={10}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">Only Indian phone numbers are accepted for partners.</p>
+        </div>
+      )}
       <div>
         <Label htmlFor="signupPassword">Password</Label>
         <div className="relative">
@@ -354,3 +380,5 @@ export function AuthModal({ isOpen, onClose, initialTab = 'login', loginIntent: 
     </Dialog>
   );
 }
+
+    
