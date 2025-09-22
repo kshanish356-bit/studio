@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, Wand2, Calendar, CircleDollarSign, Sparkles, Map, ListChecks, CheckCircle2 } from 'lucide-react';
+import { Loader2, Wand2, Calendar, IndianRupee, Sparkles, Map, ListChecks, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateItinerary, type GenerateItineraryOutput } from '@/ai/flows/generate-itinerary-flow';
 
@@ -134,7 +134,7 @@ export default function ItineraryPlannerPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="budget" className="text-base font-medium flex items-center">
-                      <CircleDollarSign className="mr-2 h-5 w-5 text-primary" /> Budget in Indian Rupees (₹)
+                      <IndianRupee className="mr-2 h-5 w-5 text-primary" /> Budget in Indian Rupees (₹)
                     </Label>
                     <Input
                       id="budget"
