@@ -4,9 +4,9 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import Image from 'next/image';
-import { Search, MapPin, BedDouble, Bath, Users, Heart, Filter, Calendar as CalendarIcon, Users as UsersIcon, Plus, Minus } from 'lucide-react';
+import { Search, MapPin, Heart, Filter, Calendar as CalendarIcon, Users as UsersIcon, Plus, Minus, BedDouble, Bath } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';

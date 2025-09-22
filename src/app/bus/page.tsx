@@ -5,11 +5,10 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { ArrowLeft, ArrowRightLeft, Bus, Search, Sofa, Clock, Filter, Wind, Tv, Plug, Loader2 } from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
+import { ArrowRightLeft, Bus, Search, Sofa, Clock, Filter, Wind, Tv, Plug, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -53,9 +52,7 @@ export default function BusPage() {
   };
   
   return (
-    <div className="bg-background min-h-screen">
-       
-
+    <div className="bg-secondary/40 min-h-screen">
        <section className="py-6 bg-secondary shadow-md">
         <div className="container mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end p-4 bg-card rounded-lg shadow">
@@ -142,23 +139,39 @@ export default function BusPage() {
             {!isLoading && mockBuses.length > 0 && (
               <div className="space-y-6">
                 {mockBuses.map(bus => (
-                  <div key={bus.id} className="bg-card p-6 rounded-lg shadow-lg flex flex-col sm:flex-row justify-between items-center">
-                    <div className="bus-card-info mb-4 sm:mb-0">
+                  <Card key={bus.id} className="p-6 rounded-lg shadow-lg flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                    <div className="bus-card-info mb-4 sm:mb-0 flex-grow">
                       <h3 className="text-xl font-semibold text-primary">{bus.operator}</h3>
                       <p className="text-sm text-muted-foreground">{bus.type}</p>
-                      <p className="text-muted-foreground mt-2">Departure: {bus.departure}</p>
-                      <p className="text-muted-foreground">Arrival: {bus.arrival}</p>
-                       <div className="flex items-center gap-2 mt-2">
-                          <span className="flex items-center text-sm text-muted-foreground"><Clock className="h-4 w-4 mr-1"/>{bus.duration}</span>
-                          <span className="text-muted-foreground">•</span>
-                          <span className="flex items-center text-sm text-muted-foreground"><Sofa className="h-4 w-4 mr-1"/>{bus.seats} Seats left</span>
+                       <div className="flex items-center gap-4 mt-3">
+                         <div>
+                            <p className="font-semibold text-lg">{bus.departure}</p>
+                            <p className="text-sm text-muted-foreground">{fromCity}</p>
+                         </div>
+                         <div className="text-center text-muted-foreground">
+                            <Clock className="h-4 w-4 mx-auto"/>
+                            <p className="text-xs mt-1">{bus.duration}</p>
+                         </div>
+                         <div>
+                            <p className="font-semibold text-lg">{bus.arrival}</p>
+                            <p className="text-sm text-muted-foreground">{toCity}</p>
+                         </div>
+                       </div>
+                       <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
+                          <span className="flex items-center"><Sofa className="h-4 w-4 mr-1"/>{bus.seats} Seats left</span>
+                          <div className="flex items-center gap-2">
+                            {bus.amenities.map(amenity => {
+                                const Icon = amenityIcons[amenity];
+                                return Icon ? <Icon key={amenity} className="h-4 w-4" title={amenity} /> : null;
+                            })}
+                          </div>
                        </div>
                     </div>
-                    <div className="bus-card-price text-center sm:text-right">
+                    <div className="bus-card-price text-center sm:text-right flex-shrink-0">
                       <h3 className="text-2xl font-bold text-accent mb-2">₹{bus.price.toLocaleString()}</h3>
-                      <Button variant="outline">View Seats</Button>
+                      <Button>View Seats</Button>
                     </div>
-                  </div>
+                  </Card>
                 ))}
               </div>
             )}
