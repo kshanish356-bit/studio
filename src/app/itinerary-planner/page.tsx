@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, Wand2, Calendar, DollarSign, Sparkles, Map, ListChecks } from 'lucide-react';
+import { Loader2, Wand2, Calendar, DollarSign, Sparkles, Map, ListChecks, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateItinerary, type GenerateItineraryOutput } from '@/ai/flows/generate-itinerary-flow';
 
@@ -134,13 +134,13 @@ export default function ItineraryPlannerPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="budget" className="text-base font-medium flex items-center">
-                      <DollarSign className="mr-2 h-5 w-5 text-primary" /> Budget (Optional)
+                      <DollarSign className="mr-2 h-5 w-5 text-primary" /> Budget in Indian Rupees (₹)
                     </Label>
                     <Input
                       id="budget"
                       value={budget}
                       onChange={(e) => setBudget(e.target.value)}
-                      placeholder="e.g., Mid-range, Luxury"
+                      placeholder="e.g., 50000 or Mid-range"
                     />
                   </div>
                   <Button type="submit" className="w-full text-lg py-6" disabled={isLoading}>
