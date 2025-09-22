@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useMemo } from 'react';
@@ -49,8 +50,19 @@ export default function AdminUsersPage() {
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/admin/users');
+      const idToken = await adminUser?.firebaseUser?.getIdToken();
+      const response = await fetch('/api/admin/users', {
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+        },
+      });
+
       if (!response.ok) {
+        if (response.status === 403) {
+            toast({ title: "Access Denied", description: "You are not authorized to view this data.", variant: "destructive" });
+            router.push('/dashboard');
+            return;
+        }
         throw new Error('Failed to fetch users');
       }
       const data = await response.json();
@@ -136,7 +148,7 @@ export default function AdminUsersPage() {
                         )}
                       </TableCell>
                       <TableCell>
-                        {new Date(user.createdAt).toLocaleDateString()}
+                        {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
                       </TableCell>
                        <TableCell className="text-right">
                          <DropdownMenu>

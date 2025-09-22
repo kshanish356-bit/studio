@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useMemo } from 'react';
@@ -48,10 +49,19 @@ export default function AdminPartnersPage() {
   const fetchPartners = async () => {
     setIsLoading(true);
     try {
-      // Reusing the users endpoint and filtering on the client for simplicity.
-      // In a real app, you might have a dedicated `/api/admin/partners` endpoint.
-      const response = await fetch('/api/admin/users');
+      const idToken = await adminUser?.firebaseUser?.getIdToken();
+      const response = await fetch('/api/admin/users', {
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+        },
+      });
+
       if (!response.ok) {
+        if (response.status === 403) {
+            toast({ title: "Access Denied", description: "You are not authorized to view this data.", variant: "destructive" });
+            router.push('/dashboard');
+            return;
+        }
         throw new Error('Failed to fetch partners');
       }
       const allUsers = await response.json();
@@ -128,7 +138,7 @@ export default function AdminPartnersPage() {
                         <Badge variant="outline">{partner.partnerRole}</Badge>
                       </TableCell>
                       <TableCell>
-                        {new Date(partner.createdAt).toLocaleDateString()}
+                        {partner.createdAt ? new Date(partner.createdAt).toLocaleDateString() : 'N/A'}
                       </TableCell>
                        <TableCell className="text-right">
                          <DropdownMenu>

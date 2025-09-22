@@ -131,9 +131,15 @@ export default function CabDriverDashboardPage() {
   }, []);
   
   const fetchRides = useCallback(async () => {
+    if (!user) return;
     setIsLoadingRides(true);
     try {
-      const response = await fetch('/api/driver/rides');
+      const idToken = await user.firebaseUser.getIdToken();
+      const response = await fetch('/api/driver/rides', {
+          headers: {
+              'Authorization': `Bearer ${idToken}`
+          }
+      });
       if (!response.ok) throw new Error('Failed to fetch rides');
       let rides: Ride[] = await response.json();
       
@@ -164,7 +170,7 @@ export default function CabDriverDashboardPage() {
     } finally {
       setIsLoadingRides(false);
     }
-  }, [toast, availableRides.length]);
+  }, [toast, user, availableRides.length]);
 
   useEffect(() => {
     if (completedRides.length > 0) {
@@ -354,10 +360,15 @@ export default function CabDriverDashboardPage() {
   };
   
   const handleRideUpdate = async (rideId: string, newStatus: Ride['status']) => {
+    if (!user) return;
     try {
+      const idToken = await user.firebaseUser.getIdToken();
       const response = await fetch('/api/driver/rides', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`
+        },
         body: JSON.stringify({ rideId, newStatus }),
       });
       if (!response.ok) throw new Error('Failed to update ride status');
@@ -398,6 +409,10 @@ export default function CabDriverDashboardPage() {
       toast({ title: "Missing Information", description: "Please fill all fields to create a package.", variant: "destructive" });
       return;
     }
+    if (!user) {
+        toast({ title: "Authentication Error", description: "You must be logged in to create a package.", variant: "destructive"});
+        return;
+    }
     setIsSubmittingPackage(true);
     
     let imageUrl = 'https://placehold.co/600x400.png';
@@ -413,9 +428,13 @@ export default function CabDriverDashboardPage() {
     }
 
     try {
+      const idToken = await user.firebaseUser.getIdToken();
       const response = await fetch('/api/tour-packages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`
+        },
         body: JSON.stringify({
           title: packageTitle,
           description: packageDescription,

@@ -26,6 +26,7 @@ interface User {
   image?: string | null;
   primaryRole?: 'user' | 'partner' | 'admin' | null;
   partnerRole?: PartnerRole | null;
+  firebaseUser: FirebaseUser; // Expose the raw firebase user object
 }
 
 interface AuthContextType {
@@ -52,35 +53,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { toast } = useToast();
 
 
-  const fetchUserRoleData = useCallback(async (uid: string, basicUserContext: Omit<User, 'primaryRole' | 'partnerRole'>) => {
+  const fetchUserRoleData = useCallback(async (firebaseUser: FirebaseUser) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/user-role/${uid}`);
+      const response = await fetch(`/api/user-role/${firebaseUser.uid}`);
       if (response.ok) {
         const roleData = await response.json();
         setUser({
-          ...basicUserContext,
-          name: roleData.name || basicUserContext.name, // Prioritize Firestore name
-          email: roleData.email || basicUserContext.email, // Prioritize Firestore email
+          id: firebaseUser.uid,
+          name: roleData.name || firebaseUser.displayName,
+          email: roleData.email || firebaseUser.email,
+          image: firebaseUser.photoURL,
           primaryRole: roleData.primaryRole || 'user',
           partnerRole: roleData.partnerRole || null,
+          firebaseUser,
         });
       } else {
-        // If fetching role fails (e.g., new user, document not yet created or other error)
-        // We still set the user with basic info and default role. The signup process should create the role doc.
-        console.warn(`Failed to fetch role for ${uid}: ${response.status}. Defaulting role.`);
+        console.warn(`Failed to fetch role for ${firebaseUser.uid}: ${response.status}. Defaulting role.`);
         setUser({ 
-            ...basicUserContext, 
+            id: firebaseUser.uid,
+            name: firebaseUser.displayName,
+            email: firebaseUser.email,
+            image: firebaseUser.photoURL,
             primaryRole: 'user', 
-            partnerRole: null 
+            partnerRole: null,
+            firebaseUser
         });
       }
     } catch (error) {
       console.error("Error fetching user role data:", error);
       setUser({ 
-          ...basicUserContext, 
+          id: firebaseUser.uid,
+          name: firebaseUser.displayName,
+          email: firebaseUser.email,
+          image: firebaseUser.photoURL,
           primaryRole: 'user', // Default role on error
-          partnerRole: null 
+          partnerRole: null,
+          firebaseUser
       });
     } finally {
       setIsLoading(false);
@@ -91,15 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
-        const defaultName = firebaseUser.displayName || 
-                            (firebaseUser.email ? firebaseUser.email.split('@')[0] : "User");
-        const basicUserContextData = {
-          id: firebaseUser.uid,
-          name: defaultName,
-          email: firebaseUser.email,
-          image: firebaseUser.photoURL,
-        };
-        fetchUserRoleData(firebaseUser.uid, basicUserContextData);
+        fetchUserRoleData(firebaseUser);
       } else {
         setUser(null);
         setIsLoading(false);
@@ -114,19 +115,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const userCredential = await signInWithEmailAndPassword(auth, email, pass);
       const uid = userCredential.user.uid;
       
-      // Manually fetch role after login to ensure immediate redirection logic is correct
       const roleResponse = await fetch(`/api/user-role/${uid}`);
       if (!roleResponse.ok) {
-        // This case handles when a user exists in Firebase Auth but not in our Firestore `users` collection.
-        // This can happen if Firestore entry creation failed during signup.
-        // We should treat this as a login error, as the user profile is incomplete.
         const errorData = await roleResponse.json();
         throw new Error(errorData.message || 'User profile not found. Please contact support.');
       }
 
       const roleData = await roleResponse.json();
 
-      // Check if the login intent matches the user's actual role
       if (intent === 'admin' && roleData.primaryRole !== 'admin') {
           throw new Error('Access denied. Not an admin account.');
       }
@@ -137,50 +133,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           throw new Error(`This is a ${roleData.primaryRole} account. Please log in through the correct portal.`);
       }
 
-
-      // Update user state immediately after fetching role
-      setUser({
-        id: uid,
-        name: roleData.name || userCredential.user.displayName,
-        email: roleData.email || userCredential.user.email,
-        image: userCredential.user.photoURL,
-        primaryRole: roleData.primaryRole,
-        partnerRole: roleData.partnerRole,
-      });
-
+      // onAuthStateChanged will handle setting the user state and redirection.
+      // This function just needs to succeed or fail.
       toast({ title: "Login Successful", description: `Welcome back!` });
       
-      // Redirection logic
-      if (roleData.primaryRole === 'admin') {
-          router.push('/dashboard/admin');
-      } else if (roleData.primaryRole === 'partner') {
-          if (roleData.partnerRole) {
-              switch (roleData.partnerRole) {
-                  case 'cabDriver':
-                      router.push('/dashboard/cab-driver');
-                      break;
-                  case 'houseRent':
-                      router.push('/dashboard/house-rent');
-                      break;
-                  case 'agent':
-                      router.push('/dashboard/agent');
-                      break;
-                  default:
-                      router.push('/partner/select-role');
-              }
-          } else {
-              router.push('/partner/select-role');
-          }
-      } else {
-          router.push('/dashboard');
-      }
-
+      // Let onAuthStateChanged handle setting user and subsequent logic
     } catch (error: any) {
       console.error("Login error:", error);
       const errorMessage = error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password'
         ? "Invalid email or password."
         : error.message || "Login failed. Please try again.";
       toast({ title: "Login Failed", description: errorMessage, variant: "destructive" });
+      throw error; // Re-throw to allow modal to handle it
     } finally {
       setIsSubmitting(false);
     }
@@ -196,17 +160,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         name: name,
         email: email,
         primaryRole: primaryRole,
+        partnerRole: primaryRole === 'partner' ? partnerRole || null : null,
       };
-      if (primaryRole === 'partner' && partnerRole) {
-        rolePayload.partnerRole = partnerRole;
-      } else {
-        rolePayload.partnerRole = null;
-      }
-       if (primaryRole === 'admin') {
-        rolePayload.primaryRole = 'admin';
-        rolePayload.partnerRole = null; // Admins don't have a partner sub-role
-      }
-
 
       const roleResponse = await fetch(`/api/user-role/${userCredential.user.uid}`, {
         method: 'POST',
@@ -219,39 +174,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error(errorData.message || 'Failed to set user role after signup.');
       }
       
-      // After signup, onAuthStateChanged will set the user state.
-      // Now, redirect based on the role they signed up with.
-      if (primaryRole === 'admin') {
-        router.push('/dashboard/admin');
-      } else if (primaryRole === 'partner') {
-        if (partnerRole) {
-          switch (partnerRole) {
-              case 'cabDriver':
-                  router.push('/dashboard/cab-driver');
-                  break;
-              case 'houseRent':
-                  router.push('/dashboard/house-rent');
-                  break;
-              case 'agent':
-                  router.push('/dashboard/agent');
-                  break;
-              default:
-                  router.push('/partner/select-role'); // Fallback to role selection
-          }
-        } else {
-          router.push('/partner/select-role');
-        }
-      } else { // 'user'
-        router.push('/dashboard');
-      }
-
-      // Return a basic user object, full context update comes from onAuthStateChanged
+      // onAuthStateChanged will handle redirecting after state update
+      // just return the created user object.
       return {
         id: userCredential.user.uid,
         name,
         email,
         primaryRole,
         partnerRole: rolePayload.partnerRole,
+        firebaseUser: userCredential.user,
       };
     } catch (error: any) {
       console.error("Signup error:", error);
@@ -259,7 +190,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ? "This email is already registered."
         : error.message || "Signup failed. Please try again.";
       toast({ title: "Signup Failed", description: errorMessage, variant: "destructive" });
-      throw error; // Re-throw to be caught by AuthModal
+      throw error;
     } finally {
       setIsSubmitting(false);
     }
@@ -286,13 +217,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     setIsSubmitting(true);
     try {
-      // Update Firebase Auth profile (client-side)
       await updateProfile(auth.currentUser, {
         displayName: updatedData.name,
         photoURL: updatedData.image,
       });
 
-      // Update Firestore profile data (backend)
       const response = await fetch(`/api/user-role/${auth.currentUser.uid}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -304,8 +233,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error(errorData.message || 'Failed to update profile on the server.');
       }
       
-      // Optimistically update local state or re-fetch
-      setUser(prevUser => prevUser ? { ...prevUser, ...updatedData } : null);
+      setUser(prevUser => prevUser ? { ...prevUser, ...updatedData, name: updatedData.name || prevUser.name, image: updatedData.image || prevUser.image } : null);
       toast({ title: "Profile Updated", description: "Your profile has been successfully updated." });
 
     } catch (error: any) {
@@ -320,7 +248,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsSubmitting(true);
     try {
       await firebaseSignOut(auth);
-      setUser(null); // onAuthStateChanged will also set user to null
+      setUser(null);
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
       router.push('/');
     } catch (error: any) {
@@ -332,13 +260,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const setPartnerSubRole = async (subRole: PartnerRole) => {
-    if (!user || user.primaryRole !== 'partner') {
-      toast({ title: "Error", description: "User is not a partner.", variant: "destructive" });
-      return;
-    }
-    if (!auth.currentUser) {
-        toast({ title: "Error", description: "No authenticated user found.", variant: "destructive"});
-        return;
+    if (!user || user.primaryRole !== 'partner' || !auth.currentUser) {
+        throw new Error("User is not a partner or not authenticated.");
     }
     setIsSubmitting(true);
     try {
@@ -352,7 +275,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to update partner role.');
       }
-      // Update local user state
       setUser(prev => prev ? { ...prev, partnerRole: subRole } : null);
       toast({ title: "Partner Role Set", description: `Your role has been set to ${subRole}.` });
     } catch (error: any) {

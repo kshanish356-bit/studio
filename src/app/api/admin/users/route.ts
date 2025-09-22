@@ -1,11 +1,36 @@
 
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebase/admin';
+import type { NextRequest } from 'next/server';
+import { db, authAdmin, isFirebaseAdminConfigured } from '@/lib/firebase/admin';
 
-// In a real app, you would add authentication middleware to ensure only admins can access this route.
-// For now, it's an open endpoint for demonstration.
+async function verifyAdmin(request: NextRequest): Promise<string | null> {
+  const authorization = request.headers.get('Authorization');
+  if (authorization?.startsWith('Bearer ')) {
+    const idToken = authorization.split('Bearer ')[1];
+    try {
+      const decodedToken = await authAdmin!.verifyIdToken(idToken);
+      const userDoc = await db!.collection('users').doc(decodedToken.uid).get();
+      if (userDoc.exists && userDoc.data()?.primaryRole === 'admin') {
+        return decodedToken.uid;
+      }
+    } catch (error) {
+      console.error('Error verifying admin token:', error);
+      return null;
+    }
+  }
+  return null;
+}
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  if (!isFirebaseAdminConfigured || !db || !authAdmin) {
+    return NextResponse.json({ message: "Firebase Admin is not configured." }, { status: 500 });
+  }
+
+  const adminUid = await verifyAdmin(request);
+  if (!adminUid) {
+    return NextResponse.json({ message: 'Unauthorized: Admin access required.' }, { status: 403 });
+  }
+
   try {
     const usersCollection = db.collection('users');
     const snapshot = await usersCollection.get();

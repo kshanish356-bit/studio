@@ -1,9 +1,9 @@
 
-// /src/app/api/driver/rides/route.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { db, authAdmin, isFirebaseAdminConfigured, DecodedIdToken } from '@/lib/firebase/admin';
+import { FieldValue } from 'firebase-admin/firestore';
 
-// Define the Ride type, consistent with frontend
 interface Ride {
   id: string;
   from: string;
@@ -11,57 +11,121 @@ interface Ride {
   time: string;
   status: 'Pending' | 'Accepted' | 'Ongoing' | 'Completed' | 'Cancelled';
   fare?: string;
-  driverUid?: string; // Optional: for future real backend
-  passengerId?: string; // Optional: for future real backend
+  driverUid?: string;
+  passengerId?: string;
 }
 
-// Mock database for rides
-let mockRides: Ride[] = [
-  { id: '1', from: 'Bhopal New Market', to: 'Indore Airport', time: '10:00 AM', status: 'Accepted', fare: '₹1800' },
-  { id: '2', from: 'MP Nagar Zone 2', to: 'Bhopal Railway Station', time: '12:30 PM', status: 'Pending', fare: '₹250' },
-  { id: '3', from: 'Airport Road', to: 'City Center Mall', time: '03:15 PM', status: 'Ongoing', fare: '₹300' },
-  { id: '4', from: 'Van Vihar National Park', to: 'Upper Lake View Point', time: '05:00 PM', status: 'Completed', fare: '₹150' },
-  { id: '5', from: 'Lake View', to: 'DB Mall', time: 'Yesterday 08:00 PM', status: 'Completed', fare: '₹220' },
-  { id: '6', from: 'ISBT Bhopal', to: 'Kolar Road', time: 'Two days ago 11:00 AM', status: 'Completed', fare: '₹450' },
-  { id: '7', from: 'Ashoka Garden', to: 'BHEL Township', time: '09:00 AM Tomorrow', status: 'Pending', fare: '₹180' },
-  { id: '8', from: 'Habibganj Station', to: 'MANIT Campus', time: '11:00 AM Tomorrow', status: 'Accepted', fare: '₹120' },
-];
+// Helper to verify user token and get UID
+async function getUserIdFromToken(request: NextRequest): Promise<DecodedIdToken | null> {
+  const authorization = request.headers.get('Authorization');
+  if (authorization?.startsWith('Bearer ')) {
+    const idToken = authorization.split('Bearer ')[1];
+    try {
+      const decodedToken = await authAdmin!.verifyIdToken(idToken);
+      return decodedToken;
+    } catch (error) {
+      console.error('Error verifying token:', error);
+      return null;
+    }
+  }
+  return null;
+}
+
+// Initialize rides collection if it doesn't exist with mock data
+async function initializeRides() {
+    if (!db) return;
+    const ridesRef = db.collection('rides');
+    const snapshot = await ridesRef.limit(1).get();
+    if (snapshot.empty) {
+        console.log('Rides collection is empty, initializing with mock data...');
+        const mockRides: Omit<Ride, 'id'>[] = [
+            { from: 'Bhopal New Market', to: 'Indore Airport', time: '10:00 AM', status: 'Accepted', fare: '₹1800', driverUid: 'driver1' },
+            { from: 'MP Nagar Zone 2', to: 'Bhopal Railway Station', time: '12:30 PM', status: 'Pending', fare: '₹250' },
+            { from: 'Airport Road', to: 'City Center Mall', time: '03:15 PM', status: 'Ongoing', fare: '₹300', driverUid: 'driver1' },
+            { from: 'Van Vihar National Park', to: 'Upper Lake View Point', time: '05:00 PM', status: 'Completed', fare: '₹150', driverUid: 'driver2' },
+        ];
+        const batch = db.batch();
+        mockRides.forEach(ride => {
+            const docRef = ridesRef.doc(); // Firestore generates ID
+            batch.set(docRef, { ...ride, createdAt: FieldValue.serverTimestamp() });
+        });
+        await batch.commit();
+        console.log('Mock rides initialized in Firestore.');
+    }
+}
+
+if (isFirebaseAdminConfigured) {
+    initializeRides().catch(console.error);
+}
 
 export async function GET(request: NextRequest) {
-  // In a real app, you'd get driverUid from authenticated session
-  // const driverUid = request.headers.get('x-driver-uid'); // Example
-  // And filter rides: mockRides.filter(ride => ride.driverUid === driverUid)
-  try {
-    return NextResponse.json(mockRides);
-  } catch (error) {
-    console.error("Error fetching rides:", error);
-    return NextResponse.json({ message: "Failed to fetch rides", error: (error as Error).message }, { status: 500 });
-  }
+    if (!isFirebaseAdminConfigured || !db || !authAdmin) {
+        return NextResponse.json({ message: "Firebase Admin is not configured." }, { status: 500 });
+    }
+
+    const decodedToken = await getUserIdFromToken(request);
+    if (!decodedToken) {
+        return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+    
+    // In a real app, you might filter by driverUid based on the authenticated user.
+    // For now, we'll fetch based on status similar to the mock logic.
+    // const driverUid = decodedToken.uid; 
+
+    try {
+        const ridesSnapshot = await db.collection('rides').orderBy('createdAt', 'desc').get();
+        const rides = ridesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Ride));
+        return NextResponse.json(rides);
+    } catch (error) {
+        console.error("Error fetching rides:", error);
+        return NextResponse.json({ message: "Failed to fetch rides", error: (error as Error).message }, { status: 500 });
+    }
 }
 
 export async function PATCH(request: NextRequest) {
-  try {
-    const { rideId, newStatus } = await request.json();
-
-    if (!rideId || !newStatus) {
-      return NextResponse.json({ message: 'Ride ID and new status are required.' }, { status: 400 });
+    if (!isFirebaseAdminConfigured || !db || !authAdmin) {
+        return NextResponse.json({ message: "Firebase Admin is not configured." }, { status: 500 });
     }
 
-    const rideIndex = mockRides.findIndex(ride => ride.id === rideId);
-
-    if (rideIndex === -1) {
-      return NextResponse.json({ message: 'Ride not found.' }, { status: 404 });
+    const decodedToken = await getUserIdFromToken(request);
+    if (!decodedToken) {
+        return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    mockRides[rideIndex].status = newStatus;
-    // Simulate some status transitions, e.g., if completed, maybe it goes to history
-    // For now, just update status. Frontend will filter.
+    try {
+        const { rideId, newStatus } = await request.json();
 
-    console.log(`Ride ${rideId} status updated to ${newStatus}`);
-    return NextResponse.json({ message: 'Ride status updated successfully.', ride: mockRides[rideIndex] });
+        if (!rideId || !newStatus) {
+            return NextResponse.json({ message: 'Ride ID and new status are required.' }, { status: 400 });
+        }
 
-  } catch (error) {
-    console.error("Error updating ride status:", error);
-    return NextResponse.json({ message: "Failed to update ride status", error: (error as Error).message }, { status: 500 });
-  }
+        const rideRef = db.collection('rides').doc(rideId);
+        const rideDoc = await rideRef.get();
+
+        if (!rideDoc.exists) {
+            return NextResponse.json({ message: 'Ride not found.' }, { status: 404 });
+        }
+
+        // Optional: Add logic to check if this driver is allowed to update this ride.
+        // const rideData = rideDoc.data();
+        // if (rideData?.driverUid && rideData.driverUid !== decodedToken.uid) {
+        //     return NextResponse.json({ message: 'Forbidden: You are not assigned to this ride.' }, { status: 403 });
+        // }
+
+        const updateData: { status: Ride['status'], driverUid?: string } = { status: newStatus };
+        if (newStatus === 'Accepted') {
+            updateData.driverUid = decodedToken.uid;
+        }
+
+        await rideRef.update(updateData);
+        
+        const updatedRideDoc = await rideRef.get();
+
+        console.log(`Ride ${rideId} status updated to ${newStatus} by ${decodedToken.uid}`);
+        return NextResponse.json({ message: 'Ride status updated successfully.', ride: { id: updatedRideDoc.id, ...updatedRideDoc.data() } });
+
+    } catch (error) {
+        console.error("Error updating ride status:", error);
+        return NextResponse.json({ message: "Failed to update ride status", error: (error as Error).message }, { status: 500 });
+    }
 }

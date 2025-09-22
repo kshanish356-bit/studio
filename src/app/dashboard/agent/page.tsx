@@ -103,6 +103,10 @@ export default function TravelAgentDashboardPage() {
       toast({ title: "Missing Information", description: "Please fill all fields to create a package.", variant: "destructive" });
       return;
     }
+    if (!user) {
+        toast({ title: "Authentication Error", description: "You must be logged in to create a package.", variant: "destructive"});
+        return;
+    }
     setIsSubmittingPackage(true);
 
     let imageUrl = 'https://placehold.co/600x400.png';
@@ -118,9 +122,13 @@ export default function TravelAgentDashboardPage() {
     }
 
     try {
+      const idToken = await user.firebaseUser.getIdToken();
       const response = await fetch('/api/tour-packages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`
+        },
         body: JSON.stringify({
           title: packageTitle,
           description: packageDescription,
