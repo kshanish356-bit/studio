@@ -3,9 +3,12 @@
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Mic } from 'lucide-react';
+import { Search, Mic, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { interpretUserRequest } from '@/ai/flows/interpret-request-flow';
+
 
 // Extend the window interface for the Web Speech API
 declare global {
@@ -17,26 +20,57 @@ declare global {
 
 export default function HeroSection() {
   const { toast } = useToast();
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [isListening, setIsListening] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const recognitionRef = useRef<any>(null);
 
   const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (searchTerm.trim()) {
-      toast({
-        title: "Search Submitted",
-        description: `Looking for: ${searchTerm}`,
-      });
-      // Add actual search logic or navigation here
-    } else {
+    processRequest(searchTerm);
+  };
+
+  const processRequest = async (query: string) => {
+    if (!query.trim()) {
       toast({
         title: "Empty Search",
-        description: "Please enter a destination to search.",
+        description: "Please enter a destination or command to search.",
         variant: "destructive",
       });
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      const result = await interpretUserRequest({ query });
+
+      toast({
+        title: "Request Processed",
+        description: `Navigating to ${result.page}...`,
+      });
+
+      // Construct the URL with query parameters
+      const url = new URL(result.page, window.location.origin);
+      Object.entries(result.params || {}).forEach(([key, value]) => {
+        if (value) {
+          url.searchParams.append(key, value.toString());
+        }
+      });
+      
+      router.push(url.toString());
+
+    } catch (error) {
+      console.error("Error interpreting request:", error);
+      toast({
+        title: "AI Error",
+        description: "Could not understand the request. Please try rephrasing.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessing(false);
     }
   };
+
 
   const handleVoiceSearch = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -63,13 +97,14 @@ export default function HeroSection() {
 
     recognition.onstart = () => {
       setIsListening(true);
-      toast({ title: "Listening...", description: "Please speak your destination." });
+      toast({ title: "Listening...", description: "Please speak your destination or command." });
     };
 
     recognition.onresult = (event: any) => {
       const speechResult = event.results[0][0].transcript;
       setSearchTerm(speechResult);
-      toast({ title: "Voice Recognized", description: `You said: "${speechResult}"` });
+      toast({ title: "Voice Recognized", description: `You said: "${speechResult}". Processing...` });
+      processRequest(speechResult);
     };
 
     recognition.onerror = (event: any) => {
@@ -86,6 +121,12 @@ export default function HeroSection() {
 
     recognition.start();
   };
+  
+  const DisplayIcon = () => {
+    if (isProcessing) return <Loader2 className="h-5 w-5 animate-spin" />;
+    if (isListening) return <Mic className="h-5 w-5 text-red-500" />;
+    return <Mic className="h-5 w-5" />;
+  }
 
   return (
     <section
@@ -105,17 +146,17 @@ export default function HeroSection() {
           <Input
             type="text"
             name="search-destinations" 
-            placeholder="Search destinations, e.g., Paris, Bali, Tokyo..."
+            placeholder="Search or say 'Find hotels in Goa'"
             aria-label="Search destinations"
             className="text-lg p-4 rounded-md flex-grow text-foreground"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <Button type="button" size="lg" variant="secondary" onClick={handleVoiceSearch} aria-label="Voice Search" className={isListening ? 'bg-red-500 hover:bg-red-600' : ''}>
-            <Mic className="h-5 w-5" />
+          <Button type="button" size="icon" variant="secondary" onClick={handleVoiceSearch} aria-label="Voice Search" className="h-auto w-12" disabled={isProcessing}>
+            <DisplayIcon />
           </Button>
-          <Button type="submit" size="lg" aria-label="Search" className="bg-accent hover:bg-accent/90 text-accent-foreground">
-            <Search className="mr-2 h-5 w-5" /> Search
+          <Button type="submit" size="lg" aria-label="Search" className="bg-accent hover:bg-accent/90 text-accent-foreground" disabled={isProcessing}>
+             {isProcessing ? <Loader2 className="mr-2 h-5 w-5 animate-spin"/> : <Search className="mr-2 h-5 w-5" />} Search
           </Button>
         </form>
       </div>
