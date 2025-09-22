@@ -81,15 +81,23 @@ export default function FeaturedTours() {
   }, [fetchPackages]);
 
   const filteredPackages = useMemo(() => {
-    if (filter === 'all') {
-      // Show featured packages first, then sort by creation (newest first, assuming IDs are sequential)
-      return [...packages].sort((a, b) => {
+    const sortedPackages = [...packages].sort((a, b) => {
+        // Firestore timestamp can be converted to date
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
+        return dateB.getTime() - dateA.getTime(); // Newest first
+    });
+
+    const displayPackages = [...sortedPackages].sort((a, b) => {
         if (a.isFeatured && !b.isFeatured) return -1;
         if (!a.isFeatured && b.isFeatured) return 1;
-        return (parseInt(b.id.replace('pkg','')) || 0) - (parseInt(a.id.replace('pkg','')) || 0);
-      });
+        return 0; // Keep original sort for non-featured items
+    });
+    
+    if (filter === 'all') {
+      return displayPackages;
     }
-    return packages.filter(p => p.creatorRole === filter);
+    return displayPackages.filter(p => p.creatorRole === filter);
   }, [packages, filter]);
 
   const handleBookNow = (pkg: TourPackage) => {

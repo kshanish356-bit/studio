@@ -175,4 +175,3 @@ export async function PATCH(request: NextRequest) {
         return NextResponse.json({ message: "Failed to add review", error: (error as Error).message }, { status: 500 });
     }
 }
-
