@@ -4,14 +4,19 @@ import type { NextRequest } from 'next/server';
 import { personalizedTripSuggestions, type PersonalizedTripSuggestionsInput } from '@/ai/flows/personalized-trip-suggestions';
 
 // IMPORTANT: In a production environment, you MUST secure this endpoint.
-// Cron job endpoints should not be publicly accessible without authentication.
-// Common methods include:
-// 1. Using a secret token in the request header/query parameter that your endpoint checks.
-// 2. If deployed on a platform like Vercel or Google Cloud, use their built-in mechanisms
-//    for invoking functions securely (e.g., Vercel Cron Jobs with protected endpoints,
-//    Google Cloud Scheduler with IAM authentication for HTTP targets).
+// This example demonstrates securing it with a secret key passed in the Authorization header.
+// You would set CRON_SECRET in your environment variables.
+
+function isAuthorized(request: NextRequest) {
+  const authHeader = request.headers.get('authorization');
+  return authHeader === `Bearer ${process.env.CRON_SECRET}`;
+}
 
 export async function GET(request: NextRequest) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+  }
+
   console.log('Daily Inspiration Cron Job Triggered');
 
   // Example: Define generic preferences for daily inspiration

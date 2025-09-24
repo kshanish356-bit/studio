@@ -8,4 +8,5 @@ import '@/ai/flows/generate-image-flow.ts';
 import '@/ai/flows/generate-package-details-flow.ts';
 import '@/ai/flows/generate-itinerary-flow.ts';
 import '@/ai/flows/interpret-request-flow.ts';
+import '@/ai/flows/get-hotel-recommendations-flow.ts';
 

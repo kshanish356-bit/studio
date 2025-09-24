@@ -6,14 +6,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 import Image from 'next/image';
-import { Search, Star, MapPin, Wifi, Utensils, ParkingCircle, Sun, Wind, Loader2 } from 'lucide-react';
+import { Search, Star, MapPin, Wifi, Utensils, ParkingCircle, Sun, Wind, Loader2, Sparkles } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
+import { useToast } from '@/hooks/use-toast';
+import { getHotelRecommendations } from '@/ai/flows/get-hotel-recommendations-flow';
 
 const mockHotels = [
   { id: 1, name: 'The Oberoi Grand', location: 'Kolkata, West Bengal', rating: 4.9, price: 15000, image: 'https://placehold.co/400x300.png', aiHint: 'luxury hotel', amenities: ['wifi', 'parking', 'pool'] },
@@ -36,10 +38,33 @@ export default function HotelsPage() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>({ from: new Date(), to: new Date(new Date().setDate(new Date().getDate() + 1)) });
   const [priceRange, setPriceRange] = useState([25000]);
   const [isLoading, setIsLoading] = useState(false);
+  const [aiIsLoading, setAiIsLoading] = useState(false);
+  const [aiQuery, setAiQuery] = useState('');
+  const [aiRecommendations, setAiRecommendations] = useState<string | null>(null);
+  const { toast } = useToast();
+
 
   const handleSearch = () => {
     setIsLoading(true);
     setTimeout(() => setIsLoading(false), 1500); // Simulate search
+  };
+  
+  const handleAiSearch = async () => {
+    if (!aiQuery.trim()) {
+        toast({ title: "Query is empty", description: "Please describe what you are looking for.", variant: "destructive" });
+        return;
+    }
+    setAiIsLoading(true);
+    setAiRecommendations(null);
+    try {
+        const result = await getHotelRecommendations({ query: aiQuery });
+        setAiRecommendations(result.recommendations);
+    } catch (error) {
+        console.error("AI recommendation error:", error);
+        toast({ title: "AI Error", description: "Could not fetch AI recommendations.", variant: "destructive" });
+    } finally {
+        setAiIsLoading(false);
+    }
   };
 
   return (
@@ -73,6 +98,36 @@ export default function HotelsPage() {
             </Button>
           </div>
         </div>
+      </section>
+      
+      <section className="py-12 bg-background">
+          <div className="container mx-auto">
+              <Card className="max-w-3xl mx-auto shadow-lg">
+                  <CardHeader className="text-center">
+                      <Sparkles className="mx-auto h-10 w-10 text-primary mb-2"/>
+                      <CardTitle>AI Hotel Recommendations</CardTitle>
+                      <CardDescription>Describe your ideal hotel, and our AI will find the best match for you!</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                      <div className="flex gap-2">
+                          <Input 
+                            placeholder="e.g., 'A romantic palace hotel in Rajasthan under ₹30,000'"
+                            value={aiQuery}
+                            onChange={(e) => setAiQuery(e.target.value)}
+                          />
+                          <Button onClick={handleAiSearch} disabled={aiIsLoading}>
+                            {aiIsLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : "Get Recommendations"}
+                          </Button>
+                      </div>
+                      {aiRecommendations && (
+                          <div className="mt-6 p-4 bg-secondary/50 rounded-lg">
+                              <p className="font-semibold mb-2">AI Suggestion:</p>
+                              <p className="text-sm">{aiRecommendations}</p>
+                          </div>
+                      )}
+                  </CardContent>
+              </Card>
+          </div>
       </section>
 
       <main className="container mx-auto px-4 py-8">
