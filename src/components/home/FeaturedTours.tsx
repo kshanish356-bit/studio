@@ -36,6 +36,7 @@ interface TourPackage {
   rating: number;
   reviews: Review[];
   itinerary: string;
+  createdAt: any; // Can be a Firebase Timestamp object
 }
 
 export default function FeaturedTours() {
@@ -82,7 +83,7 @@ export default function FeaturedTours() {
 
   const filteredPackages = useMemo(() => {
     const sortedPackages = [...packages].sort((a, b) => {
-        // Firestore timestamp can be converted to date
+        // Correctly handle Firebase Timestamps
         const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
         const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
         return dateB.getTime() - dateA.getTime(); // Newest first
