@@ -26,7 +26,13 @@ export default function DailyInspiration() {
       try {
         // In a real app, you might fetch from a cached endpoint.
         // Here we call the cron route directly for demonstration.
-        const response = await fetch('/api/cron/daily-inspiration', { cache: 'no-store' });
+        // We must include the CRON_SECRET in the authorization header.
+        const response = await fetch('/api/cron/daily-inspiration', {
+          cache: 'no-store',
+          headers: {
+            Authorization: `Bearer ${process.env.CRON_SECRET || ''}`,
+          },
+        });
         if (!response.ok) {
           throw new Error('Failed to fetch daily inspiration');
         }
