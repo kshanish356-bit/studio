@@ -14,28 +14,19 @@ const roboto = Roboto({
 });
 
 export const metadata: Metadata = {
-  title: 'My Apps - Your Journey Begins Here',
-  description: 'Book flights, hotels, trains, and more with My Apps. Your journey begins here!',
+  title: 'Studio | Travel Booking',
+  description: 'Plan and book flights, hotels, trains, tours, and more with Studio.',
   keywords: 'travel, flights, hotels, trains, booking, vacation, deals',
   openGraph: {
-    title: 'My Apps - Your Journey Begins Here',
-    description: 'Book flights, hotels, trains, and more with My Apps. Your journey begins here!',
-    images: [
-      {
-        url: 'https://placehold.co/1200x630.png', 
-        width: 1200,
-        height: 630,
-        alt: 'My Apps Social Image',
-      },
-    ],
+    title: 'Studio | Travel Booking',
+    description: 'Plan and book flights, hotels, trains, tours, and more with Studio.',
     type: 'website',
   },
-  twitter: { 
+  twitter: {
     card: 'summary_large_image',
-    title: 'My Apps - Your Journey Begins Here',
-    description: 'Book flights, hotels, trains, and more with My Apps. Your journey begins here!',
-    images: ['https://placehold.co/1200x630.png'], 
-  }
+    title: 'Studio | Travel Booking',
+    description: 'Plan and book flights, hotels, trains, tours, and more with Studio.',
+  },
 };
 
 export default function RootLayout({
