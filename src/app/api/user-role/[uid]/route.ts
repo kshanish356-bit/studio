@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import type { DecodedIdToken } from 'firebase-admin/auth';
 import { db, authAdmin, isFirebaseAdminConfigured } from '@/lib/firebase/admin';
+
+type AuthResult =
+  | { response: NextResponse; decoded?: never }
+  | { decoded: DecodedIdToken; response?: never };
 
 const unavailable = () =>
   NextResponse.json(
@@ -8,7 +13,7 @@ const unavailable = () =>
     { status: 503 },
   );
 
-async function verifyUser(request: NextRequest, uid: string) {
+async function verifyUser(request: NextRequest, uid: string): Promise<AuthResult> {
   if (!isFirebaseAdminConfigured || !db || !authAdmin) return { response: unavailable() };
 
   const authorization = request.headers.get('authorization');
@@ -35,7 +40,7 @@ export async function GET(request: NextRequest, { params }: { params: { uid: str
   if (!uid) return NextResponse.json({ message: 'User ID is required.' }, { status: 400 });
 
   const auth = await verifyUser(request, uid);
-  if (auth.response) return auth.response;
+  if ('response' in auth) return auth.response;
 
   try {
     const doc = await db!.collection('users').doc(uid).get();
@@ -52,7 +57,7 @@ export async function POST(request: NextRequest, { params }: { params: { uid: st
   if (!uid) return NextResponse.json({ message: 'User ID is required.' }, { status: 400 });
 
   const auth = await verifyUser(request, uid);
-  if (auth.response) return auth.response;
+  if ('response' in auth) return auth.response;
 
   try {
     const { name, email, primaryRole, partnerRole } = await request.json();
@@ -96,11 +101,11 @@ export async function PUT(request: NextRequest, { params }: { params: { uid: str
   if (!uid) return NextResponse.json({ message: 'User ID is required.' }, { status: 400 });
 
   const auth = await verifyUser(request, uid);
-  if (auth.response) return auth.response;
+  if ('response' in auth) return auth.response;
 
   try {
     const body = await request.json();
-    const updates: Record<string, string> = {};
+    const updates: Record<string, string | null> = {};
     if (body.name !== undefined) {
       if (typeof body.name !== 'string' || !body.name.trim()) {
         return NextResponse.json({ message: 'Name must be a non-empty string.' }, { status: 400 });
@@ -111,8 +116,7 @@ export async function PUT(request: NextRequest, { params }: { params: { uid: str
       if (body.image !== null && typeof body.image !== 'string') {
         return NextResponse.json({ message: 'Image must be a URL string or null.' }, { status: 400 });
       }
-      // Firestore accepts null values; retain the explicit type at this boundary.
-      (updates as Record<string, string | null>).image = body.image;
+      updates.image = body.image;
     }
     if (body.partnerRole !== undefined) {
       if (typeof body.partnerRole !== 'string' || !partnerRoles.has(body.partnerRole)) {
