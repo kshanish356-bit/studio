@@ -1,13 +1,19 @@
-
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { db } from '@/lib/firebase/admin'; // Using Firebase Admin SDK
+
+const firebaseUnavailable = () =>
+  NextResponse.json(
+    { message: 'Firebase Admin is not configured. Please configure the server environment.' },
+    { status: 503 },
+  );
 
 export async function GET(request: NextRequest, { params }: { params: { uid: string } }) {
   const uid = params.uid;
   if (!uid) {
     return NextResponse.json({ message: 'User ID is required.' }, { status: 400 });
   }
+  if (!db) return firebaseUnavailable();
 
   try {
     const userDocRef = db.collection('users').doc(uid);
@@ -29,6 +35,7 @@ export async function POST(request: NextRequest, { params }: { params: { uid: st
   if (!uid) {
     return NextResponse.json({ message: 'User ID is required.' }, { status: 400 });
   }
+  if (!db) return firebaseUnavailable();
 
   try {
     const { name, email, primaryRole, partnerRole } = await request.json();
@@ -36,10 +43,9 @@ export async function POST(request: NextRequest, { params }: { params: { uid: st
     if (!name || !email || !primaryRole) {
       return NextResponse.json({ message: 'Name, email, and primaryRole are required.' }, { status: 400 });
     }
-    if (primaryRole === 'partner' && partnerRole === undefined) { // partnerRole can be null if not yet selected, but must be in payload if primary is partner
-        // Allow partnerRole to be null if not immediately set
+    if (primaryRole === 'partner' && partnerRole === undefined) {
+      // partnerRole may be null if the partner has not selected a role yet.
     }
-
 
     const userDocRef = db.collection('users').doc(uid);
     const userData = {
@@ -47,11 +53,11 @@ export async function POST(request: NextRequest, { params }: { params: { uid: st
       name,
       email,
       primaryRole,
-      partnerRole: partnerRole !== undefined ? partnerRole : null, // Set to null if not provided
+      partnerRole: partnerRole !== undefined ? partnerRole : null,
       createdAt: new Date().toISOString(),
     };
 
-    await userDocRef.set(userData, { merge: true }); // Use merge:true to be safe if doc somehow exists
+    await userDocRef.set(userData, { merge: true });
 
     return NextResponse.json({ message: 'User role created/updated successfully.', userData }, { status: 201 });
   } catch (error) {
@@ -61,19 +67,19 @@ export async function POST(request: NextRequest, { params }: { params: { uid: st
   }
 }
 
-
 export async function PUT(request: NextRequest, { params }: { params: { uid: string } }) {
   const uid = params.uid;
   if (!uid) {
     return NextResponse.json({ message: 'User ID is required.' }, { status: 400 });
   }
+  if (!db) return firebaseUnavailable();
 
   try {
     const { name, image, partnerRole } = await request.json();
-    
+
     const updates: { [key: string]: any } = {};
     if (name !== undefined) updates.name = name;
-    if (image !== undefined) updates.image = image; // Assuming you store image URL in Firestore
+    if (image !== undefined) updates.image = image;
     if (partnerRole !== undefined) updates.partnerRole = partnerRole;
 
     if (Object.keys(updates).length === 0) {
